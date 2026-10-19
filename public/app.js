@@ -1,8 +1,8 @@
 'use strict';
 
 const CATEGORIES = [
-  { id: 'all', label: 'Início' },
-  { id: 'multiplayer', label: 'Multiplayer (2–4P)' },
+  { id: 'all', label: 'Recentes' },
+  { id: 'multiplayer', label: 'Multiplayer 2–4P' },
   { id: 'snes', label: 'Super Nintendo' },
   { id: 'gba', label: 'Game Boy Advance' },
   { id: 'segaMD', label: 'Mega Drive' },
@@ -35,6 +35,8 @@ const state = {
   lastPadNavTs: 0,
   touchPadEnabled: detectMobileOrTouch(),
   gamepadOnlyMode: false,
+  uiSoundEnabled: true,
+  audioCtx: null,
   virtualButtons: new Array(16).fill(0),
   virtualAxes: [0, 0, 0, 0],
   activePointers: new Map(),
@@ -47,6 +49,38 @@ const RTC_CONFIG = {
     { urls: 'stun:stun1.l.google.com:19302' }
   ]
 };
+
+function getOrCreateAudioContext() {
+  if (!state.uiSoundEnabled) return null;
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtx) return null;
+  if (!state.audioCtx) {
+    state.audioCtx = new AudioCtx();
+  }
+  if (state.audioCtx.state === 'suspended') {
+    state.audioCtx.resume().catch(() => {});
+  }
+  return state.audioCtx;
+}
+
+function playConsoleTone(freqHz, durationSec, gainLevel = 0.035) {
+  const ctx = getOrCreateAudioContext();
+  if (!ctx) return;
+  try {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freqHz, ctx.currentTime);
+    gain.gain.setValueAtTime(gainLevel, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + durationSec);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + durationSec);
+  } catch {
+    // Ignore audio context restrictions before user gesture
+  }
+}
 
 function triggerHapticPulse(durationMs = 12) {
   if (navigator.vibrate) {
@@ -139,6 +173,10 @@ function renderCategoryTabs() {
 function selectCategory(categoryId) {
   state.selectedCategory = categoryId;
   state.focusedIndex = 0;
+  playConsoleTone(520, 0.045, 0.03);
+  const catObj = CATEGORIES.find((c) => c.id === categoryId);
+  const shelfTitle = document.getElementById('shelfTitle');
+  if (shelfTitle && catObj) shelfTitle.textContent = catObj.label;
   renderCategoryTabs();
   applyFiltersAndRender();
 }
@@ -181,6 +219,7 @@ function renderCapsulesGrid() {
   state.filteredGames.forEach((game, idx) => {
     const card = document.createElement('div');
     card.className = `capsule-card ${idx === state.focusedIndex ? 'focused' : ''}`;
+    card.dataset.gameIndex = String(idx);
     card.tabIndex = 0;
     card.setAttribute('role', 'option');
     card.setAttribute('aria-selected', idx === state.focusedIndex ? 'true' : 'false');
@@ -195,15 +234,19 @@ function renderCapsulesGrid() {
       <span class="capsule-players-tag">${game.maxPlayers}P</span>
       <div class="capsule-overlay">
         <div class="capsule-title">${escapeHtml(game.title)}</div>
-        <div class="capsule-play-pill">▶ Jogar</div>
+        <div class="capsule-play-pill">[A] JOGAR</div>
       </div>
     `;
 
     card.addEventListener('mouseenter', () => setFocusedGameIndex(idx, false));
     card.addEventListener('click', () => {
-      setFocusedGameIndex(idx, false);
-      launchGameItem(game);
+      if (state.focusedIndex === idx) {
+        launchGameItem(game);
+      } else {
+        setFocusedGameIndex(idx, true);
+      }
     });
+    if (state.snapObserver) state.snapObserver.observe(card);
     grid.appendChild(card);
   });
 }
@@ -211,6 +254,9 @@ function renderCapsulesGrid() {
 function setFocusedGameIndex(newIndex, scrollIntoView = true) {
   if (state.filteredGames.length === 0) return;
   const clamped = Math.max(0, Math.min(state.filteredGames.length - 1, newIndex));
+  if (clamped !== state.focusedIndex) {
+    playConsoleTone(680, 0.035, 0.025);
+  }
   state.focusedIndex = clamped;
 
   const cards = document.querySelectorAll('#capsulesGrid .capsule-card');
@@ -218,10 +264,43 @@ function setFocusedGameIndex(newIndex, scrollIntoView = true) {
     card.classList.toggle('focused', i === clamped);
     card.setAttribute('aria-selected', i === clamped ? 'true' : 'false');
     if (i === clamped && scrollIntoView) {
-      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      card.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }
   });
   updateHeroSpotlight();
+}
+
+function handleCarouselWheel(ev) {
+  if (Math.abs(ev.deltaY) <= Math.abs(ev.deltaX)) return;
+  ev.preventDefault();
+  setFocusedGameIndex(state.focusedIndex + (ev.deltaY > 0 ? 1 : -1), true);
+}
+
+function syncSnappedCardElement(targetEl) {
+  if (!targetEl || targetEl.dataset.gameIndex === undefined) return;
+  setFocusedGameIndex(Number(targetEl.dataset.gameIndex), false);
+}
+
+function bindCarouselScrollSync() {
+  const scroller = document.getElementById('capsulesGrid');
+  if (!scroller) return;
+
+  scroller.addEventListener('wheel', handleCarouselWheel, { passive: false });
+
+  if ('onscrollsnapchange' in HTMLElement.prototype) {
+    scroller.addEventListener('scrollsnapchange', (ev) => syncSnappedCardElement(ev.snapTargetInline));
+    return;
+  }
+
+  if ('IntersectionObserver' in window) {
+    state.snapObserver = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.find((e) => e.isIntersecting);
+        if (visible) syncSnappedCardElement(visible.target);
+      },
+      { root: scroller, threshold: 0.85 }
+    );
+  }
 }
 
 function updateHeroSpotlight() {
@@ -231,7 +310,7 @@ function updateHeroSpotlight() {
   document.getElementById('heroConsoleTag').textContent = game.consoleName;
   document.getElementById('heroPlayersTag').textContent =
     game.maxPlayers > 1 ? `ATÉ ${game.maxPlayers} JOGADORES` : '1 JOGADOR';
-  document.getElementById('heroStatusTag').textContent = 'PRONTO PARA JOGAR';
+  document.getElementById('heroStatusTag').textContent = 'PRONTO NO CONSOLE';
   document.getElementById('heroTitle').textContent = game.title;
   document.getElementById('heroSubtitle').textContent = game.genre || game.consoleName;
 
@@ -263,13 +342,14 @@ async function ensureCatalogRomOnServer(game) {
 }
 
 async function launchGameItem(game) {
+  playConsoleTone(880, 0.12, 0.045);
   const playBtnText = document.getElementById('heroPlayBtnText');
   const prevLabel = playBtnText.textContent;
-  playBtnText.textContent = 'CARREGANDO...';
+  playBtnText.textContent = 'INICIANDO...';
 
   try {
     const resolved = !game.id && game.slug ? await ensureCatalogRomOnServer(game) : game;
-    mountEmulatorJs(resolved.core, `/api/roms/${resolved.id}/file`, resolved.title, resolved.id);
+    mountEmulatorJs(resolved.core, `/api/roms/${resolved.id}/file`, resolved.title);
     sendWs({
       type: 'create-room',
       playerName: getPlayerName(),
@@ -293,7 +373,7 @@ function launchLocalFileAsHost(file) {
   const qam = document.getElementById('quickAccessDialog');
   if (qam.open) qam.close();
 
-  mountEmulatorJs(matched.core, blobUrl, title, null);
+  mountEmulatorJs(matched.core, blobUrl, title);
   sendWs({
     type: 'create-room',
     playerName: getPlayerName(),
@@ -316,7 +396,7 @@ function renderRoomsShelf() {
 
   if (state.rooms.length === 0) {
     shelf.classList.add('hidden');
-    qamList.textContent = 'Nenhuma sala aberta no momento. Inicie qualquer jogo para criar uma sala.';
+    qamList.textContent = 'Nenhuma sala aberta no momento. Inicie qualquer jogo para abrir uma sala.';
     return;
   }
 
@@ -326,11 +406,11 @@ function renderRoomsShelf() {
     card.className = 'room-banner-card';
     card.innerHTML = `
       <div>
-        <div class="tag-pill tag-system" style="display:inline-block;margin-bottom:4px">${escapeHtml(room.consoleName)}</div>
-        <div style="font-weight:800;font-size:0.95rem">${escapeHtml(room.gameTitle)}</div>
-        <div style="font-size:0.78rem;color:var(--steam-muted)">Host: ${escapeHtml(room.hostName)} · ${room.players.length}/4 Controles</div>
+        <div class="tag-pill tag-system" style="display:inline-block;margin-bottom:3px">${escapeHtml(room.consoleName)}</div>
+        <div style="font-weight:800;font-size:0.88rem">${escapeHtml(room.gameTitle)}</div>
+        <div style="font-size:0.72rem;color:var(--steam-muted)">Host: ${escapeHtml(room.hostName)} · ${room.players.length}/4 Controles</div>
       </div>
-      <button type="button" class="btn-steam-play" style="padding:0.5rem 1rem;font-size:0.82rem">Entrar</button>
+      <button type="button" class="btn-steam-play" style="padding:0.45rem 0.9rem;font-size:0.78rem">Entrar</button>
     `;
     card.addEventListener('click', () => joinRoomById(room.id));
     grid.appendChild(card);
@@ -426,7 +506,7 @@ function onRoomJoined(msg) {
   document.getElementById('activeRoomCode').textContent = `Sala #${msg.room.id}`;
   document.getElementById('stageConsoleBadge').textContent = msg.room.consoleName;
   document.getElementById('stageGameTitle').textContent = msg.room.gameTitle;
-  document.getElementById('stageRoleBadge').textContent = `Controle ${msg.slot}`;
+  document.getElementById('stageRoleBadge').textContent = `P${msg.slot}`;
 
   syncTouchControlsVisibility();
   renderControllerSlots();
@@ -460,12 +540,12 @@ function appendChatLine(author, text) {
   box.scrollTop = box.scrollHeight;
 }
 
-function buildEmulatorIframeHtml(core, romUrl, title, saveUrl) {
+function buildEmulatorIframeHtml(core, romUrl, title) {
   return `<!DOCTYPE html>
 <html>
 <head>
   <style>
-    html,body,#game{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;}
+    html,body,#game{margin:0;padding:0;width:100%;height:100%;background:#000000;overflow:hidden;}
     .ejs_virtual_gamepad_parent{display:none !important;}
   </style>
 </head>
@@ -479,8 +559,8 @@ function buildEmulatorIframeHtml(core, romUrl, title, saveUrl) {
     window.EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
     window.EJS_startOnLoaded = true;
     window.EJS_color = '#1a9fff';
+    window.EJS_backgroundColor = '#000000';
     window.EJS_VirtualGamepadSettings = [];
-    ${saveUrl ? `window.EJS_loadStateURL = ${JSON.stringify(saveUrl)};` : ''}
 
     const W3C_TO_RETRO = {0:0, 1:8, 2:1, 3:9, 4:10, 5:11, 6:12, 7:13, 8:2, 9:3, 12:4, 13:5, 14:6, 15:7};
     const prevBySlot = {};
@@ -512,7 +592,7 @@ function buildEmulatorIframeHtml(core, romUrl, title, saveUrl) {
 </html>`;
 }
 
-function mountEmulatorJs(core, romUrl, title, romId) {
+function mountEmulatorJs(core, romUrl, title) {
   const mount = document.getElementById('emulatorMount');
   const video = document.getElementById('remoteStreamVideo');
   const hint = document.getElementById('guestOverlayHint');
@@ -526,10 +606,9 @@ function mountEmulatorJs(core, romUrl, title, romId) {
   iframe.allow = 'autoplay; fullscreen; gamepad';
   mount.appendChild(iframe);
 
-  const saveUrl = romId ? `/api/roms/${romId}/save` : '';
   const doc = iframe.contentWindow.document;
   doc.open();
-  doc.write(buildEmulatorIframeHtml(core, romUrl, title, saveUrl));
+  doc.write(buildEmulatorIframeHtml(core, romUrl, title));
   doc.close();
 }
 
@@ -710,6 +789,7 @@ function closeConsoleStage() {
   state.activeRoom = null;
   state.gamepadOnlyMode = false;
   state.virtualButtons.fill(0);
+  document.getElementById('ingameSidebar').classList.add('hidden');
   document.getElementById('emulatorMount').innerHTML = '';
   document.getElementById('remoteStreamVideo').srcObject = null;
   document.getElementById('consoleStage').classList.add('hidden');
@@ -749,7 +829,7 @@ async function handleRomUploadSubmit(ev) {
       if (!e.lengthComputable) return;
       const pct = Math.round((e.loaded / e.total) * 100);
       progressFill.style.width = `${pct}%`;
-      progressText.textContent = `Adicionando (${pct}%)`;
+      progressText.textContent = `Instalando (${pct}%)`;
     });
 
     await fetchDeckLibrary();
@@ -979,7 +1059,7 @@ function resolvePadNavigationCommand(pad) {
 function handleDeckGamepadNavigation(pad) {
   if (state.activeRoom) return;
   const now = performance.now();
-  if (now - state.lastPadNavTs < 200) return;
+  if (now - state.lastPadNavTs < 190) return;
 
   const command = resolvePadNavigationCommand(pad);
   if (command) {
@@ -1037,11 +1117,14 @@ function bindStageControlEvents() {
     syncTouchControlsVisibility();
   });
 
-  document.getElementById('closeStageBtn').addEventListener('click', closeConsoleStage);
-  document.getElementById('toggleSidebarBtn').addEventListener('click', () => {
+  const toggleOverlayDrawer = () => {
     document.getElementById('ingameSidebar').classList.toggle('hidden');
-    document.getElementById('ingameBody').classList.toggle('sidebar-collapsed');
-  });
+  };
+  document.getElementById('openIngameOverlayBtn').addEventListener('click', toggleOverlayDrawer);
+  document.getElementById('toggleSidebarBtn').addEventListener('click', toggleOverlayDrawer);
+
+  document.getElementById('closeStageBtn').addEventListener('click', closeConsoleStage);
+  document.getElementById('overlayExitGameBtn').addEventListener('click', closeConsoleStage);
 
   document.getElementById('fullscreenStageBtn').addEventListener('click', () => {
     const stage = document.getElementById('consoleStage');
@@ -1053,13 +1136,26 @@ function bindUiEvents() {
   setupDialogLightDismiss();
   updateClock();
   setInterval(updateClock, 15000);
+  bindCarouselScrollSync();
 
   const openQam = () => document.getElementById('quickAccessDialog').showModal();
   document.getElementById('openQuickMenuBtn').addEventListener('click', openQam);
   document.getElementById('openRoomsDrawerBtn').addEventListener('click', openQam);
   document.getElementById('bottomMenuBtn').addEventListener('click', openQam);
-  document.getElementById('heroPartyBtn').addEventListener('click', launchFocusedGame);
+  document.getElementById('heroPartyBtn').addEventListener('click', openQam);
   document.getElementById('bottomPartyBtn').addEventListener('click', openQam);
+
+  document.getElementById('carouselPrevBtn').addEventListener('click', () => {
+    setFocusedGameIndex(state.focusedIndex - 1);
+  });
+  document.getElementById('carouselNextBtn').addEventListener('click', () => {
+    setFocusedGameIndex(state.focusedIndex + 1);
+  });
+
+  document.getElementById('toggleUiSoundBtn').addEventListener('click', () => {
+    state.uiSoundEnabled = !state.uiSoundEnabled;
+    document.getElementById('uiSoundGlyph').textContent = state.uiSoundEnabled ? '🔊' : '🔇';
+  });
 
   const openUpload = () => {
     const qam = document.getElementById('quickAccessDialog');

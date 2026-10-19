@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#0e141b" />
+  <meta name="theme-color" content="#080c11" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Supersymmetry" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <title>Supersymmetry</title>
+  <title>Supersymmetry OS</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
@@ -16,46 +16,57 @@
   <input type="checkbox" id="iosHapticSwitch" switch class="sr-only" aria-hidden="true" tabindex="-1" />
   <label for="iosHapticSwitch" id="iosHapticLabel" class="sr-only" aria-hidden="true"></label>
 
-  <!-- Dynamic SteamOS Big Art Backdrop -->
-  <div class="steamos-backdrop" id="heroBackdrop"></div>
-  <div class="steamos-vignette"></div>
+  <!-- Full-Bleed Bazzite / SteamOS "Art Hero" Dynamic Background Layers -->
+  <div class="bazzite-bg-blur" id="heroBackdrop"></div>
+  <div class="bazzite-bg-art" id="heroSnapArt">
+    <img id="heroSnapImg" src="" alt="" loading="eager" />
+  </div>
+  <div class="bazzite-bg-vignette"></div>
 
-  <!-- Top SteamOS System Bar -->
-  <header class="steamos-topbar">
-    <div class="topbar-left">
-      <div class="search-pill">
-        <span aria-hidden="true">🔍</span>
-        <input id="searchInput" type="search" placeholder="Buscar jogo..." autocomplete="off" />
+  <!-- Console OS Shell (Fixed 100vw x 100dvh, Zero Webpage Scroll) -->
+  <div class="console-os-shell" id="homeView">
+    <!-- Top Bazzite / SteamOS System HUD Bar -->
+    <header class="steamos-topbar">
+      <div class="topbar-left">
+        <div class="bazzite-brand" title="Bazzite / SteamOS GamepadUI">
+          <span class="bazzite-dot"></span>
+          <span>DECK OS</span>
+        </div>
+
+        <span class="bumper-pill desktop-only-prompt" aria-hidden="true">L1</span>
+        <nav class="steamos-tabs" id="consoleTabs" aria-label="Categorias do Console"></nav>
+        <span class="bumper-pill desktop-only-prompt" aria-hidden="true">R1</span>
       </div>
 
-      <nav class="steamos-tabs" id="consoleTabs" aria-label="Categorias do Console"></nav>
-    </div>
+      <div class="topbar-right">
+        <div class="search-pill">
+          <span aria-hidden="true">🔍</span>
+          <input id="searchInput" type="search" placeholder="Filtrar..." autocomplete="off" />
+        </div>
 
-    <div class="topbar-right">
-      <button type="button" class="status-chip" id="openRoomsDrawerBtn" title="Salas Multiplayer e Amigos">
-        <span>👥</span>
-        <span id="roomsCountBadge">Salas (0)</span>
-      </button>
+        <button type="button" class="status-chip" id="openRoomsDrawerBtn" title="Salas Multiplayer Abertas">
+          <span>👥</span>
+          <span id="roomsCountBadge">Salas (0)</span>
+        </button>
 
-      <div class="status-chip" id="gamepadStatusChip" title="Controles Conectados">
-        <span>🎮</span>
-        <span id="gamepadCountLabel">0</span>
+        <div class="status-chip" id="gamepadStatusChip" title="Controles Conectados">
+          <span>🎮</span>
+          <span id="gamepadCountLabel">0</span>
+        </div>
+
+        <button type="button" class="status-chip qam-btn" id="openQuickMenuBtn" title="Menu Rápido (•••)">
+          <span>•••</span>
+        </button>
+
+        <div class="system-clock" id="systemClock">00:00</div>
       </div>
+    </header>
 
-      <button type="button" class="status-chip qam-btn" id="openQuickMenuBtn" title="Menu Rápido (•••)">
-        <span>•••</span>
-      </button>
-
-      <div class="system-clock" id="systemClock">00:00</div>
-    </div>
-  </header>
-
-  <!-- Main SteamOS Home / Library View -->
-  <main class="steamos-main" id="homeView">
-    <!-- Hero Spotlight for Currently Focused Game -->
-    <section class="steamos-hero" id="heroSection" aria-label="Jogo em Destaque">
-      <div class="hero-info">
+    <!-- Upper Stage: Unobstructed "Art Hero" Game Spotlight -->
+    <main class="bazzite-stage">
+      <section class="art-hero-spotlight" id="heroSection" aria-label="Jogo Selecionado">
         <div class="hero-tags">
+          <span class="tag-pill tag-bazzite">BAZZITE // VERIFIED</span>
           <span class="tag-pill tag-system" id="heroConsoleTag">SUPER NINTENDO</span>
           <span class="tag-pill tag-players" id="heroPlayersTag">ATÉ 4 JOGADORES</span>
           <span class="tag-pill tag-verified" id="heroStatusTag">PRONTO PARA JOGAR</span>
@@ -64,69 +75,107 @@
         <h1 class="hero-title" id="heroTitle">Super Bomberman 4</h1>
         <p class="hero-subtitle" id="heroSubtitle">Party / Battle 4 Jogadores</p>
 
-        <div class="hero-actions">
+        <!-- Iconic SteamOS Action Strip -->
+        <div class="steamos-play-strip">
           <button type="button" class="btn-steam-play" id="heroPlayBtn">
             <span class="glyph glyph-a">A</span>
             <span id="heroPlayBtnText">▶ JOGAR</span>
           </button>
 
+          <div class="steamos-telemetry-box">
+            <span class="telemetry-label">MODO CONSOLE</span>
+            <strong class="telemetry-val">60 FPS · P2P</strong>
+          </div>
+
           <button type="button" class="btn-steam-action" id="heroPartyBtn">
             <span class="glyph glyph-x">X</span>
-            <span>Convidar Amigos (4P)</span>
+            <span>Salas Multiplayer</span>
           </button>
         </div>
+      </section>
+
+      <!-- Live Open Rooms Floating Banner (Only visible when friends have active rooms) -->
+      <section class="live-rooms-strip hidden" id="liveRoomsShelf" aria-label="Salas Abertas Agora">
+        <div class="rooms-row" id="roomsGrid"></div>
+      </section>
+
+      <!-- Lower Stage: Iconic SteamOS Horizontal Capsule Carousel -->
+      <section class="carousel-deck-section" aria-label="Carrossel de Jogos">
+        <div class="carousel-header-row">
+          <div class="carousel-section-title">
+            <h2 id="shelfTitle">Recentes &amp; Destaques</h2>
+            <span class="shelf-count" id="shelfCountLabel">24 jogos</span>
+          </div>
+
+          <div class="carousel-nav-arrows">
+            <button type="button" class="carousel-arrow-btn" id="carouselPrevBtn" aria-label="Jogo Anterior">◀</button>
+            <button type="button" class="carousel-arrow-btn" id="carouselNextBtn" aria-label="Próximo Jogo">▶</button>
+          </div>
+        </div>
+
+        <div class="capsules-carousel" id="capsulesGrid" role="listbox" aria-label="Jogos Disponíveis"></div>
+      </section>
+    </main>
+
+    <!-- Persistent Steam Deck Bottom Prompt Bar -->
+    <footer class="steamos-bottombar">
+      <div class="bottom-left">
+        <button type="button" class="bottom-prompt" id="bottomMenuBtn">
+          <span class="glyph glyph-steam">STEAM</span>
+          <span>Menu</span>
+        </button>
+        <button type="button" class="bottom-prompt" id="toggleUiSoundBtn" title="Sons do Console">
+          <span class="glyph glyph-bumper" id="uiSoundGlyph">🔊</span>
+          <span>Som UI</span>
+        </button>
       </div>
 
-      <div class="hero-preview-frame">
-        <img id="heroSnapImg" src="" alt="Preview do jogo" loading="eager" />
+      <div class="bottom-right">
+        <div class="bottom-prompt desktop-only-prompt">
+          <span class="glyph glyph-bumper">◀ / ▶</span>
+          <span>Navegar</span>
+        </div>
+        <div class="bottom-prompt desktop-only-prompt">
+          <span class="glyph glyph-bumper">L1 / R1</span>
+          <span>Sistema</span>
+        </div>
+        <button type="button" class="bottom-prompt" id="bottomImportBtn">
+          <span class="glyph glyph-y">Y</span>
+          <span>Importar</span>
+        </button>
+        <button type="button" class="bottom-prompt" id="bottomPartyBtn">
+          <span class="glyph glyph-x">X</span>
+          <span>Salas</span>
+        </button>
+        <button type="button" class="bottom-prompt" id="bottomPlayBtn">
+          <span class="glyph glyph-a">A</span>
+          <span>Iniciar</span>
+        </button>
       </div>
-    </section>
+    </footer>
+  </div>
 
-    <!-- Live Multiplayer Rooms Shelf (Shown automatically when friends have open rooms) -->
-    <section class="shelf-section hidden" id="liveRoomsShelf">
-      <div class="shelf-header">
-        <h2>🛋️ Salas Abertas Agora — Toque para Entrar (PC ou Celular)</h2>
-      </div>
-      <div class="rooms-row" id="roomsGrid"></div>
-    </section>
-
-    <!-- Capsule Art Shelf -->
-    <section class="shelf-section">
-      <div class="shelf-header">
-        <h2 id="shelfTitle">Biblioteca de Jogos</h2>
-        <span class="shelf-count" id="shelfCountLabel">24 jogos</span>
-      </div>
-      <div class="capsules-grid" id="capsulesGrid" role="listbox" aria-label="Jogos Disponíveis"></div>
-    </section>
-  </main>
-
-  <!-- Fullscreen In-Game Console Stage (Hybrid PC + Mobile Handheld) -->
+  <!-- 100% Edge-to-Edge Fullscreen In-Game Console Stage (Zero Web Chrome!) -->
   <section class="ingame-stage hidden" id="consoleStage" aria-label="Jogo em Execução">
-    <div class="ingame-overlay-bar">
-      <div class="ingame-title-box">
-        <span class="tag-pill tag-system" id="stageConsoleBadge">SNES</span>
-        <strong class="stage-game-title" id="stageGameTitle">Super Bomberman 4</strong>
-        <span class="tag-pill tag-players" id="stageRoleBadge">Controle 1</span>
-        <span class="room-pill" id="activeRoomCode">Sala #LOCAL</span>
-      </div>
+    <!-- Floating SteamOS Guide Pill (Replaces web header bar) -->
+    <div class="floating-steam-hud">
+      <button type="button" class="steam-guide-pill" id="openIngameOverlayBtn" title="Abrir Overlay do Console (STEAM)">
+        <span class="glyph glyph-steam">STEAM</span>
+        <strong id="stageGameTitle">Jogo</strong>
+        <span class="tag-pill tag-players" id="stageRoleBadge">P1</span>
+      </button>
 
-      <div class="ingame-actions">
-        <button type="button" class="hud-btn" id="toggleTouchPadBtn" title="Ativar/Ocultar Controles na Tela">
-          🎮 Touch
-        </button>
-        <button type="button" class="hud-btn" id="toggleGamepadOnlyBtn" title="Usar o celular apenas como Controle olhando para a TV/PC">
-          📱 Modo Controle
-        </button>
-        <button type="button" class="hud-btn" id="toggleSidebarBtn" title="Controles e Chat">
-          💬 Chat
-        </button>
-        <button type="button" class="hud-btn" id="fullscreenStageBtn" title="Tela Cheia">
-          ⛶ Tela Cheia
-        </button>
-        <button type="button" class="hud-btn hud-btn-exit" id="closeStageBtn">
-          ✕ Sair
-        </button>
-      </div>
+      <button type="button" class="steam-guide-pill" id="toggleTouchPadBtn" title="Ativar/Ocultar Controles Touch">
+        🎮 Touch
+      </button>
+
+      <button type="button" class="steam-guide-pill" id="toggleGamepadOnlyBtn" title="Modo Controle Sem Fio (2ª Tela)">
+        📱 Controle
+      </button>
+
+      <button type="button" class="steam-guide-pill steam-pill-exit" id="closeStageBtn" title="Encerrar Jogo e Voltar ao Console">
+        ✕ Sair
+      </button>
     </div>
 
     <div class="ingame-body sidebar-collapsed" id="ingameBody">
@@ -142,13 +191,12 @@
             </div>
           </div>
           <div id="guestOverlayHint" class="guest-overlay-hint hidden">
-            Conectado em Tempo Real · Use o Controle Touch na tela, Gamepad Bluetooth/USB ou Teclado
+            Conectado em Tempo Real · Use o Controle Touch, Gamepad Bluetooth/USB ou Teclado
           </div>
         </div>
 
         <!-- Universal Multi-Touch Virtual Gamepad (Mobile Portrait, Mobile Landscape & Touch PC) -->
         <div class="virtual-gamepad hidden" id="virtualGamepad" aria-label="Controle Virtual Multi-Touch">
-          <!-- Shoulder & System Row -->
           <div class="vpad-top-row">
             <div class="vpad-shoulders">
               <button type="button" class="vpad-shoulder-btn" data-pad-btn="6">L2</button>
@@ -166,7 +214,6 @@
             </div>
           </div>
 
-          <!-- Main Thumb Controls: 8-Way Vector D-Pad (Left) & Multi-Touch Diamond (Right) -->
           <div class="vpad-main-row">
             <div class="vpad-left-zone">
               <div class="vpad-dpad" id="touchDpad" role="application" aria-label="Direcional D-Pad 8 Direções">
@@ -190,9 +237,23 @@
         </div>
       </div>
 
+      <!-- SteamOS Frosted Glass In-Game Overlay Drawer (Hidden until [STEAM] is pressed) -->
       <aside class="ingame-sidebar hidden" id="ingameSidebar">
+        <div class="qam-header">
+          <div>
+            <span class="tag-pill tag-system" id="stageConsoleBadge">SNES</span>
+            <span class="room-pill" id="activeRoomCode">Sala #LOCAL</span>
+          </div>
+          <button type="button" class="hud-btn" id="toggleSidebarBtn">✕ Fechar</button>
+        </div>
+
+        <div class="qam-btn-stack">
+          <button type="button" class="qam-action-btn" id="fullscreenStageBtn">⛶ Alternar Tela Cheia</button>
+          <button type="button" class="qam-action-btn hud-btn-exit" id="overlayExitGameBtn">✕ Encerrar Jogo</button>
+        </div>
+
         <div class="sidebar-block">
-          <h3>🎮 Controles na Sala</h3>
+          <h3>🎮 Controles Conectados</h3>
           <ul class="controller-slots" id="controllerSlotsList"></ul>
         </div>
 
@@ -200,7 +261,7 @@
           <h3>💬 Chat da Partida</h3>
           <div class="chat-messages" id="roomChatMessages"></div>
           <form id="roomChatForm" class="chat-form">
-            <input type="text" id="roomChatInput" placeholder="Enviar mensagem..." maxlength="200" />
+            <input type="text" id="roomChatInput" placeholder="Mensagem..." maxlength="200" />
             <button type="submit" class="hud-btn">Enviar</button>
           </form>
         </div>
@@ -212,30 +273,30 @@
   <dialog id="quickAccessDialog" closedby="any" aria-labelledby="qamTitle" class="console-dialog qam-drawer">
     <div class="qam-content">
       <div class="qam-header">
-        <h2 id="qamTitle">Menu Rápido</h2>
+        <h2 id="qamTitle">Bazzite Quick Access (•••)</h2>
         <button type="button" class="qam-close" data-close-dialog="quickAccessDialog" aria-label="Fechar">✕</button>
       </div>
 
       <div class="qam-section">
-        <label class="qam-label" for="playerNameInput">Seu Nome no Console</label>
+        <label class="qam-label" for="playerNameInput">Perfil do Jogador</label>
         <input id="playerNameInput" class="qam-input" type="text" maxlength="20" value="Player 1" />
       </div>
 
       <div class="qam-section">
-        <div class="qam-label">Salas Multiplayer Ativas (PC &amp; Celular)</div>
+        <div class="qam-label">Salas Multiplayer Abertas</div>
         <div id="qamRoomsList" class="qam-rooms-list"></div>
       </div>
 
       <div class="qam-section">
-        <div class="qam-label">Adicionar Jogo Personalizado</div>
+        <div class="qam-label">Biblioteca &amp; Cartuchos Locais</div>
         <div class="qam-btn-stack">
           <label class="qam-action-btn" for="instantLocalRomInput">
-            📂 Abrir Jogo do Dispositivo Agora
+            📂 Inserir Cartucho / ROM do Dispositivo
           </label>
           <input type="file" id="instantLocalRomInput" class="sr-only" accept=".sfc,.smc,.gba,.gb,.gbc,.bin,.chd,.pbp,.iso,.cso,.z64,.n64,.md,.gen,.zip,.7z" />
 
           <button type="button" class="qam-action-btn" id="openUploadModalBtn">
-            ＋ Salvar Novo Jogo na Biblioteca
+            ＋ Instalar Novo Jogo no Console
           </button>
         </div>
       </div>
@@ -246,65 +307,36 @@
   <dialog id="uploadRomDialog" closedby="any" aria-labelledby="uploadDialogTitle" class="console-dialog">
     <form id="uploadRomForm" class="qam-content">
       <div class="qam-header">
-        <h2 id="uploadDialogTitle">Adicionar Jogo à Biblioteca</h2>
+        <h2 id="uploadDialogTitle">Instalar Jogo no Console</h2>
         <button type="button" class="qam-close" data-close-dialog="uploadRomDialog" aria-label="Fechar">✕</button>
       </div>
 
       <label class="qam-section">
-        <span class="qam-label">Plataforma</span>
+        <span class="qam-label">Sistema</span>
         <select id="uploadConsoleSelect" class="qam-input" required></select>
       </label>
 
       <label class="qam-section">
-        <span class="qam-label">Nome do Jogo</span>
+        <span class="qam-label">Título</span>
         <input type="text" id="uploadTitleInput" class="qam-input" placeholder="Ex: Bomba Patch" maxlength="80" />
       </label>
 
       <label class="qam-section">
-        <span class="qam-label">Arquivo do Jogo</span>
+        <span class="qam-label">Arquivo da ROM</span>
         <input type="file" id="uploadFileInput" class="qam-input" required />
       </label>
 
       <div id="uploadProgressBox" class="progress-box hidden">
         <div class="progress-bar"><div class="progress-fill" id="uploadProgressFill"></div></div>
-        <span id="uploadProgressText">Adicionando...</span>
+        <span id="uploadProgressText">Instalando...</span>
       </div>
 
       <div class="qam-footer">
         <button type="button" class="hud-btn" data-close-dialog="uploadRomDialog">Cancelar</button>
-        <button type="submit" class="btn-steam-play btn-sm" id="submitUploadBtn">Salvar na Biblioteca</button>
+        <button type="submit" class="btn-steam-play btn-sm" id="submitUploadBtn">Instalar</button>
       </div>
     </form>
   </dialog>
-
-  <!-- Persistent Steam Deck Bottom Bar -->
-  <footer class="steamos-bottombar">
-    <div class="bottom-left">
-      <button type="button" class="bottom-prompt" id="bottomMenuBtn">
-        <span class="glyph glyph-steam">STEAM</span>
-        <span>Menu</span>
-      </button>
-    </div>
-
-    <div class="bottom-right">
-      <div class="bottom-prompt desktop-only-prompt">
-        <span class="glyph glyph-bumper">L1 / R1</span>
-        <span>Plataforma</span>
-      </div>
-      <button type="button" class="bottom-prompt" id="bottomImportBtn">
-        <span class="glyph glyph-y">Y</span>
-        <span>Adicionar</span>
-      </button>
-      <button type="button" class="bottom-prompt" id="bottomPartyBtn">
-        <span class="glyph glyph-x">X</span>
-        <span>Salas</span>
-      </button>
-      <button type="button" class="bottom-prompt" id="bottomPlayBtn">
-        <span class="glyph glyph-a">A</span>
-        <span>Jogar</span>
-      </button>
-    </div>
-  </footer>
 
   <script src="/app.js"></script>
 </body>

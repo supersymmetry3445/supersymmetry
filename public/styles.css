@@ -1,13 +1,14 @@
 :root {
-  --steam-bg: #0e141b;
-  --steam-surface: rgba(23, 32, 44, 0.78);
-  --steam-elevated: rgba(36, 50, 68, 0.88);
+  --steam-bg: #080c11;
+  --steam-surface: rgba(20, 28, 40, 0.78);
+  --steam-elevated: rgba(32, 45, 62, 0.88);
   --steam-blue: #1a9fff;
+  --bazzite-purple: #9333ea;
   --steam-green: #59bf40;
   --steam-green-hover: #6ed354;
   --steam-text: #f3f6f9;
-  --steam-muted: #8b9bb4;
-  --steam-border: rgba(255, 255, 255, 0.1);
+  --steam-muted: #94a3b8;
+  --steam-border: rgba(255, 255, 255, 0.12);
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
@@ -23,13 +24,14 @@
   -webkit-touch-callout: none;
 }
 
+html,
 body {
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
   font-family: 'Motiva Sans', 'Inter', system-ui, -apple-system, sans-serif;
   background-color: var(--steam-bg);
   color: var(--steam-text);
-  min-height: 100dvh;
-  overflow-x: hidden;
-  padding-bottom: calc(60px + var(--safe-bottom));
 }
 
 .sr-only {
@@ -44,79 +46,154 @@ body {
   display: none !important;
 }
 
-/* Dynamic Big Art Backdrop */
-.steamos-backdrop {
+/* ==========================================================================
+   Full-Bleed Bazzite / SteamOS "Art Hero" Background Layers
+   ========================================================================== */
+.bazzite-bg-blur {
   position: fixed;
   inset: -40px;
-  z-index: -2;
+  z-index: -3;
   background-size: cover;
   background-position: center;
-  filter: blur(36px) saturate(1.35) brightness(0.42);
-  transform: scale(1.08);
-  transition: background-image 0.45s ease-out;
+  filter: blur(48px) saturate(1.5) brightness(0.35);
+  transform: scale(1.1);
+  transition: background-image 0.4s ease-out;
 }
 
-.steamos-vignette {
+.bazzite-bg-art {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 72vw;
+  height: 76dvh;
+  z-index: -2;
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask-image:
+    linear-gradient(to left, rgba(0, 0, 0, 0.92) 35%, rgba(0, 0, 0, 0) 96%),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.92) 45%, rgba(0, 0, 0, 0) 98%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to left, rgba(0, 0, 0, 0.92) 35%, rgba(0, 0, 0, 0) 96%),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.92) 45%, rgba(0, 0, 0, 0) 98%);
+  mask-composite: intersect;
+}
+
+.bazzite-bg-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  filter: contrast(1.06) saturate(1.15) brightness(0.78);
+  transform: scale(1.03);
+  transition: opacity 0.35s ease;
+}
+
+.bazzite-bg-vignette {
   position: fixed;
   inset: 0;
   z-index: -1;
+  pointer-events: none;
   background:
-    radial-gradient(circle at 70% 22%, rgba(14, 20, 27, 0.25) 0%, rgba(14, 20, 27, 0.88) 70%),
-    linear-gradient(180deg, rgba(14, 20, 27, 0.5) 0%, rgba(14, 20, 27, 0.92) 65%, #0e141b 100%);
+    radial-gradient(circle at 75% 28%, rgba(8, 12, 17, 0.12) 0%, rgba(8, 12, 17, 0.86) 72%),
+    linear-gradient(180deg, rgba(8, 12, 17, 0.65) 0%, rgba(8, 12, 17, 0.25) 38%, rgba(8, 12, 17, 0.94) 76%, #080c11 100%);
 }
 
-/* Top System Bar */
+/* ==========================================================================
+   Console OS Shell (Fixed 100vw x 100dvh, Zero Vertical Page Scroll)
+   ========================================================================== */
+.console-os-shell {
+  width: 100vw;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+}
+
+/* Top Bazzite / SteamOS HUD Bar */
 .steamos-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 30;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: calc(0.65rem + var(--safe-top)) calc(1.5rem + var(--safe-right)) 0.65rem calc(1.5rem + var(--safe-left));
-  background: linear-gradient(180deg, rgba(10, 15, 22, 0.94) 0%, rgba(10, 15, 22, 0.65) 100%);
-  backdrop-filter: blur(16px);
+  padding: calc(0.6rem + var(--safe-top)) calc(1.8rem + var(--safe-right)) 0.6rem calc(1.8rem + var(--safe-left));
+  background: linear-gradient(180deg, rgba(6, 10, 15, 0.88) 0%, rgba(6, 10, 15, 0) 100%);
+  z-index: 20;
 }
 
 .topbar-left {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.6rem;
   min-width: 0;
   flex: 1;
+}
+
+.bazzite-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.32), rgba(26, 159, 255, 0.28));
+  border: 1px solid rgba(168, 85, 247, 0.45);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #f8fafc;
+  flex-shrink: 0;
+}
+
+.bazzite-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #38bdf8;
+  box-shadow: 0 0 10px #38bdf8;
+}
+
+.bumper-pill {
+  padding: 0.18rem 0.48rem;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #cbd5e1;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
 }
 
 .topbar-right {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.55rem;
   flex-shrink: 0;
 }
 
 .search-pill {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  background: rgba(255, 255, 255, 0.08);
+  gap: 0.35rem;
+  background: rgba(15, 23, 34, 0.72);
   border: 1px solid var(--steam-border);
-  padding: 0.36rem 0.75rem;
+  padding: 0.32rem 0.7rem;
   border-radius: 999px;
-  flex-shrink: 0;
-  transition: border-color 0.2s, background 0.2s;
+  backdrop-filter: blur(12px);
 }
 
 .search-pill:focus-within {
-  background: rgba(255, 255, 255, 0.14);
   border-color: var(--steam-blue);
+  background: rgba(20, 30, 44, 0.92);
 }
 
 .search-pill input {
   background: transparent;
   border: none;
   color: var(--steam-text);
-  font-size: 0.84rem;
-  width: 155px;
+  font-size: 0.8rem;
+  width: 120px;
   outline: none;
   user-select: text;
   -webkit-user-select: text;
@@ -129,7 +206,7 @@ body {
 .steamos-tabs {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.3rem;
   overflow-x: auto;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
@@ -143,10 +220,11 @@ body {
   background: transparent;
   border: none;
   color: var(--steam-muted);
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  padding: 0.42rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.38rem 0.82rem;
   border-radius: 999px;
   cursor: pointer;
   white-space: nowrap;
@@ -160,117 +238,135 @@ body {
 }
 
 .tab-btn.active {
-  color: #0e141b;
+  color: #080c11;
   background: #ffffff;
-  box-shadow: 0 0 18px rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.45);
 }
 
 .status-chip {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  padding: 0.35rem 0.68rem;
+  padding: 0.32rem 0.65rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 34, 0.72);
   border: 1px solid var(--steam-border);
+  backdrop-filter: blur(12px);
   color: var(--steam-text);
-  font-size: 0.78rem;
-  font-weight: 600;
+  font-size: 0.76rem;
+  font-weight: 700;
   white-space: nowrap;
 }
 
 button.status-chip {
   cursor: pointer;
-  transition: background 0.15s, transform 0.15s;
+  transition: background 0.15s, border-color 0.15s;
 }
 
 button.status-chip:hover {
-  background: rgba(255, 255, 255, 0.16);
+  background: rgba(26, 159, 255, 0.22);
+  border-color: var(--steam-blue);
 }
 
 .system-clock {
-  font-size: 0.88rem;
-  font-weight: 700;
+  font-size: 0.86rem;
+  font-weight: 800;
   color: var(--steam-text);
   letter-spacing: 0.04em;
   min-width: 44px;
   text-align: right;
 }
 
-/* Main Content */
-.steamos-main {
-  max-width: 1460px;
-  margin: 0 auto;
-  padding: 0.8rem calc(1.5rem + var(--safe-right)) 2rem calc(1.5rem + var(--safe-left));
+/* ==========================================================================
+   Main Bazzite OS Stage (Art Hero Spotlight + Horizontal Capsule Carousel)
+   ========================================================================== */
+.bazzite-stage {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  justify-content: flex-end;
+  padding: 0 calc(1.8rem + var(--safe-right)) 0.6rem calc(1.8rem + var(--safe-left));
+  gap: 0.85rem;
 }
 
-/* Hero Spotlight */
-.steamos-hero {
-  display: grid;
-  grid-template-columns: 1fr 380px;
-  align-items: center;
-  gap: 1.75rem;
-  padding: 1.5rem 1.8rem;
-  border-radius: 16px;
-  background: linear-gradient(125deg, rgba(24, 34, 48, 0.84) 0%, rgba(15, 22, 32, 0.62) 100%);
-  border: 1px solid var(--steam-border);
-  backdrop-filter: blur(18px);
-  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.48);
+/* Unobstructed "Art Hero" Spotlight */
+.art-hero-spotlight {
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: auto;
+  margin-top: auto;
+  padding-top: 0.5rem;
 }
 
 .hero-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.45rem;
-  margin-bottom: 0.55rem;
+  gap: 0.42rem;
 }
 
 .tag-pill {
-  padding: 0.22rem 0.62rem;
+  padding: 0.2rem 0.58rem;
   border-radius: 4px;
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
 }
 
+.tag-bazzite {
+  background: linear-gradient(135deg, rgba(147, 51, 234, 0.45), rgba(26, 159, 255, 0.45));
+  color: #f3e8ff;
+  border: 1px solid rgba(192, 132, 252, 0.4);
+}
+
 .tag-system {
-  background: rgba(26, 159, 255, 0.22);
+  background: rgba(26, 159, 255, 0.25);
   color: #7cc9ff;
 }
 
 .tag-players {
-  background: rgba(255, 255, 255, 0.12);
-  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.14);
+  color: #f1f5f9;
 }
 
 .tag-verified {
-  background: rgba(89, 191, 64, 0.2);
+  background: rgba(89, 191, 64, 0.24);
   color: #8ce973;
 }
 
 .hero-title {
-  font-size: clamp(1.35rem, 1rem + 2.2vw, 2.5rem);
+  font-size: clamp(1.75rem, 1.2rem + 2.8vw, 3.35rem);
   font-weight: 900;
-  letter-spacing: -0.01em;
-  line-height: 1.12;
-  margin-bottom: 0.3rem;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: #ffffff;
+  text-shadow: 0 6px 28px rgba(0, 0, 0, 0.92);
 }
 
 .hero-subtitle {
-  font-size: clamp(0.84rem, 0.78rem + 0.3vw, 0.96rem);
-  color: var(--steam-muted);
-  margin-bottom: 1.1rem;
+  font-size: clamp(0.84rem, 0.78rem + 0.3vw, 1.02rem);
+  font-weight: 600;
+  color: #cbd5e1;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.85);
+  margin-bottom: 0.45rem;
 }
 
-.hero-actions {
-  display: flex;
+/* Iconic SteamOS Action Strip */
+.steamos-play-strip {
+  display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.7rem;
+  gap: 0.85rem;
+  padding: 0.55rem 0.75rem 0.55rem 0.6rem;
+  border-radius: 12px;
+  background: rgba(14, 21, 31, 0.76);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
+  width: fit-content;
 }
 
 .btn-steam-play {
@@ -278,37 +374,59 @@ button.status-chip:hover {
   align-items: center;
   justify-content: center;
   gap: 0.6rem;
-  padding: 0.72rem 1.45rem;
+  padding: 0.75rem 1.7rem;
   border-radius: 8px;
   border: none;
-  background: var(--steam-green);
+  background: linear-gradient(180deg, #68d34d 0%, #4ca935 100%);
   color: #ffffff;
-  font-size: 0.94rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
+  font-size: 0.98rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
   cursor: pointer;
-  box-shadow: 0 8px 22px rgba(89, 191, 64, 0.38);
-  transition: transform 0.14s ease, background 0.14s ease;
+  box-shadow: 0 0 24px rgba(89, 191, 64, 0.48);
+  transition: transform 0.14s ease, filter 0.14s ease, box-shadow 0.14s ease;
 }
 
 .btn-steam-play:hover,
 .btn-steam-play:focus-visible {
-  background: var(--steam-green-hover);
-  transform: scale(1.03);
+  filter: brightness(1.1);
+  transform: scale(1.04);
   outline: 2px solid #ffffff;
+  box-shadow: 0 0 32px rgba(110, 211, 84, 0.75);
+}
+
+.steamos-telemetry-box {
+  display: flex;
+  flex-direction: column;
+  padding: 0 0.65rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.14);
+  border-right: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.telemetry-label {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--steam-muted);
+}
+
+.telemetry-val {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #e2e8f0;
 }
 
 .btn-steam-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.55rem;
-  padding: 0.72rem 1.15rem;
+  gap: 0.5rem;
+  padding: 0.68rem 1.1rem;
   border-radius: 8px;
   border: 1px solid var(--steam-border);
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--steam-text);
-  font-size: 0.88rem;
+  font-size: 0.84rem;
   font-weight: 700;
   cursor: pointer;
   transition: background 0.14s ease, transform 0.14s ease;
@@ -321,23 +439,6 @@ button.status-chip:hover {
   outline: 2px solid #ffffff;
 }
 
-.hero-preview-frame {
-  width: 100%;
-  aspect-ratio: 16 / 10;
-  border-radius: 12px;
-  overflow: hidden;
-  background: #070a0f;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.6);
-}
-
-.hero-preview-frame img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
 /* Glyphs */
 .glyph {
   display: inline-flex;
@@ -347,15 +448,15 @@ button.status-chip:hover {
   height: 22px;
   padding: 0 6px;
   border-radius: 999px;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 900;
   background: #ffffff;
-  color: #0e141b;
+  color: #080c11;
 }
 
 .glyph-a {
   background: #ffffff;
-  color: #1b4d12;
+  color: #165b0c;
 }
 
 .glyph-x {
@@ -365,7 +466,7 @@ button.status-chip:hover {
 
 .glyph-y {
   background: #f59e0b;
-  color: #0e141b;
+  color: #080c11;
 }
 
 .glyph-steam,
@@ -375,59 +476,147 @@ button.status-chip:hover {
   color: #ffffff;
 }
 
-/* Shelves & Vertical 2:3 Capsules */
-.shelf-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
+/* Live Open Rooms Floating Strip */
+.live-rooms-strip {
+  flex-shrink: 0;
 }
 
-.shelf-header {
+.rooms-row {
   display: flex;
-  align-items: baseline;
+  gap: 0.75rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.rooms-row::-webkit-scrollbar {
+  display: none;
+}
+
+.room-banner-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  min-width: 280px;
+  padding: 0.55rem 0.9rem;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(26, 159, 255, 0.28), rgba(16, 24, 36, 0.92));
+  border: 1px solid rgba(26, 159, 255, 0.5);
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   SteamOS / Bazzite Horizontal Capsule Carousel
+   ========================================================================== */
+.carousel-deck-section {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.carousel-header-row {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
 }
 
-.shelf-header h2 {
-  font-size: clamp(0.92rem, 0.85rem + 0.3vw, 1.05rem);
-  font-weight: 800;
-  letter-spacing: 0.03em;
+.carousel-section-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.65rem;
+}
+
+.carousel-section-title h2 {
+  font-size: 0.88rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #dce4ee;
+  color: #e2e8f0;
 }
 
 .shelf-count {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
+  font-weight: 700;
   color: var(--steam-muted);
 }
 
-.capsules-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+.carousel-nav-arrows {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.carousel-arrow-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--steam-border);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.carousel-arrow-btn:hover {
+  background: rgba(26, 159, 255, 0.3);
+  border-color: var(--steam-blue);
+}
+
+.capsules-carousel {
+  display: flex;
+  align-items: center;
   gap: 1.15rem;
+  overflow-x: auto;
+  overflow-y: visible;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding: 1.1rem 0.6rem 1.35rem;
+}
+
+.capsules-carousel::-webkit-scrollbar {
+  display: none;
 }
 
 .capsule-card {
   position: relative;
+  flex: 0 0 auto;
+  height: clamp(168px, 28dvh, 236px);
   aspect-ratio: 2 / 3;
   border-radius: 10px;
   overflow: hidden;
+  scroll-snap-align: center;
   background: linear-gradient(160deg, #1b2838 0%, #0f1722 100%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   cursor: pointer;
-  transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.18s ease, outline 0.12s ease;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+  opacity: 0.68;
+  transform: scale(0.93);
+  filter: saturate(0.85) brightness(0.78);
+  transition:
+    transform 0.22s cubic-bezier(0.2, 0.85, 0.25, 1),
+    opacity 0.22s ease,
+    filter 0.22s ease,
+    box-shadow 0.22s ease,
+    outline 0.12s ease;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.65);
 }
 
 .capsule-card:hover,
 .capsule-card.focused,
 .capsule-card:focus-visible {
-  transform: scale(1.05) translateY(-3px);
-  z-index: 5;
+  opacity: 1;
+  transform: translateY(-10px) scale(1.09);
+  filter: saturate(1.12) brightness(1.06);
+  z-index: 10;
   outline: 3px solid #ffffff;
   box-shadow:
-    0 20px 38px rgba(0, 0, 0, 0.78),
-    0 0 24px rgba(26, 159, 255, 0.55);
+    0 24px 48px rgba(0, 0, 0, 0.92),
+    0 0 28px rgba(26, 159, 255, 0.8),
+    0 14px 20px -10px rgba(26, 159, 255, 0.45);
 }
 
 .capsule-art {
@@ -444,70 +633,71 @@ button.status-chip:hover {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  padding: 0.8rem;
   text-align: center;
   font-weight: 800;
-  font-size: 0.92rem;
+  font-size: 0.85rem;
   background: radial-gradient(circle at 50% 25%, #2a475e, #1b2838 75%);
 }
 
 .capsule-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.05) 45%, rgba(8, 12, 18, 0.95) 100%);
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 42%, rgba(6, 10, 16, 0.96) 100%);
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  padding: 0.7rem;
+  padding: 0.65rem;
 }
 
 .capsule-system-tag {
   position: absolute;
-  top: 8px;
-  left: 8px;
-  padding: 0.15rem 0.45rem;
+  top: 7px;
+  left: 7px;
+  padding: 0.14rem 0.42rem;
   border-radius: 4px;
-  background: rgba(14, 20, 27, 0.86);
+  background: rgba(8, 12, 17, 0.88);
   backdrop-filter: blur(6px);
-  font-size: 0.62rem;
-  font-weight: 800;
+  font-size: 0.58rem;
+  font-weight: 900;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #93c5fd;
+  color: #7cc9ff;
 }
 
 .capsule-players-tag {
   position: absolute;
-  top: 8px;
-  right: 8px;
-  padding: 0.15rem 0.42rem;
+  top: 7px;
+  right: 7px;
+  padding: 0.14rem 0.38rem;
   border-radius: 4px;
-  background: rgba(14, 20, 27, 0.86);
-  font-size: 0.62rem;
-  font-weight: 800;
-  color: #a7f3d0;
+  background: rgba(8, 12, 17, 0.88);
+  font-size: 0.58rem;
+  font-weight: 900;
+  color: #8ce973;
 }
 
 .capsule-title {
-  font-size: 0.84rem;
+  font-size: 0.78rem;
   font-weight: 800;
-  line-height: 1.2;
+  line-height: 1.18;
   color: #ffffff;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.95);
 }
 
 .capsule-play-pill {
-  margin-top: 0.38rem;
+  margin-top: 0.35rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.32rem;
-  padding: 0.3rem 0.55rem;
-  border-radius: 6px;
+  gap: 0.3rem;
+  padding: 0.26rem 0.5rem;
+  border-radius: 5px;
   background: var(--steam-green);
   color: #ffffff;
-  font-size: 0.72rem;
-  font-weight: 800;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
   opacity: 0;
   transform: translateY(4px);
   transition: opacity 0.16s ease, transform 0.16s ease;
@@ -519,114 +709,83 @@ button.status-chip:hover {
   transform: translateY(0);
 }
 
-/* Rooms Row */
-.rooms-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(275px, 1fr));
-  gap: 0.9rem;
-}
-
-.room-banner-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.85rem;
-  padding: 0.9rem 1.1rem;
-  border-radius: 12px;
-  background: linear-gradient(135deg, rgba(26, 159, 255, 0.22), rgba(23, 32, 44, 0.9));
-  border: 1px solid rgba(26, 159, 255, 0.45);
-  cursor: pointer;
-  transition: transform 0.15s ease;
-}
-
-.room-banner-card:hover {
-  transform: translateY(-2px);
-  outline: 2px solid #ffffff;
-}
-
-/* In-Game Stage (Hybrid PC + Mobile Handheld) */
+/* ==========================================================================
+   100% Edge-to-Edge Fullscreen In-Game Console Stage (Zero Web Chrome!)
+   ========================================================================== */
 .ingame-stage {
   position: fixed;
   inset: 0;
+  width: 100vw;
   height: 100dvh;
   z-index: 50;
-  background: #05070a;
+  background: #000000;
   display: flex;
   flex-direction: column;
 }
 
-.ingame-overlay-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: calc(0.45rem + var(--safe-top)) calc(0.9rem + var(--safe-right)) 0.45rem calc(0.9rem + var(--safe-left));
-  background: rgba(14, 20, 27, 0.95);
-  border-bottom: 1px solid var(--steam-border);
-  flex-wrap: wrap;
-}
-
-.ingame-title-box,
-.ingame-actions {
+.floating-steam-hud {
+  position: absolute;
+  top: calc(10px + var(--safe-top));
+  left: calc(12px + var(--safe-left));
+  right: calc(12px + var(--safe-right));
+  z-index: 42;
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  flex-wrap: wrap;
+  pointer-events: none;
+  opacity: 0.42;
+  transition: opacity 0.2s ease;
 }
 
-.stage-game-title {
-  font-size: 0.88rem;
-  max-width: 220px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.floating-steam-hud:hover,
+.floating-steam-hud:focus-within {
+  opacity: 1;
 }
 
-.room-pill {
-  font-size: 0.74rem;
-  color: var(--steam-muted);
-}
-
-.hud-btn {
-  padding: 0.36rem 0.72rem;
-  border-radius: 6px;
-  border: 1px solid var(--steam-border);
-  background: rgba(255, 255, 255, 0.1);
+.steam-guide-pill {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  padding: 0.34rem 0.72rem;
+  border-radius: 999px;
+  background: rgba(12, 18, 26, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(16px);
   color: #ffffff;
-  font-size: 0.76rem;
-  font-weight: 700;
+  font-size: 0.75rem;
+  font-weight: 800;
   cursor: pointer;
-  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
 }
 
-.hud-btn:hover,
-.hud-btn.active {
-  background: rgba(26, 159, 255, 0.32);
+.steam-guide-pill:hover,
+.steam-guide-pill.active {
+  background: rgba(26, 159, 255, 0.35);
   border-color: var(--steam-blue);
 }
 
-.hud-btn-exit {
-  background: rgba(239, 68, 68, 0.25);
-  border-color: rgba(239, 68, 68, 0.5);
+.steam-pill-exit {
+  margin-left: auto;
+  background: rgba(220, 38, 38, 0.42);
+  border-color: rgba(248, 113, 113, 0.5);
 }
 
 .ingame-body {
   flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 300px;
-  min-height: 0;
+  width: 100%;
+  height: 100%;
   position: relative;
-}
-
-.ingame-body.sidebar-collapsed {
-  grid-template-columns: 1fr;
+  display: flex;
+  min-height: 0;
 }
 
 .viewport-wrapper {
   position: relative;
+  flex: 1;
   width: 100%;
   height: 100%;
-  background: #000;
+  background: #000000;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -638,7 +797,7 @@ button.status-chip:hover {
   flex: 1;
   width: 100%;
   min-height: 0;
-  background: #000;
+  background: #000000;
 }
 
 .emulator-mount,
@@ -670,28 +829,58 @@ button.status-chip:hover {
   gap: 0.45rem;
 }
 
-.controller-only-card h3 {
-  font-size: 1.05rem;
-  color: #ffffff;
-}
-
-.controller-only-card p {
-  font-size: 0.8rem;
-  color: var(--steam-muted);
-}
-
 .guest-overlay-hint {
   position: absolute;
   bottom: 10px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 0.32rem 0.8rem;
+  padding: 0.3rem 0.75rem;
   border-radius: 999px;
-  background: rgba(14, 20, 27, 0.82);
-  font-size: 0.72rem;
+  background: rgba(12, 18, 26, 0.8);
+  font-size: 0.7rem;
   color: #cbd5e1;
   pointer-events: none;
   white-space: nowrap;
+}
+
+/* Frosted Glass In-Game Overlay Drawer */
+.ingame-sidebar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(350px, 92vw);
+  z-index: 46;
+  background: rgba(12, 18, 26, 0.92);
+  backdrop-filter: blur(26px);
+  border-left: 1px solid rgba(255, 255, 255, 0.16);
+  padding: calc(1rem + var(--safe-top)) 1.15rem calc(1rem + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: -20px 0 50px rgba(0, 0, 0, 0.85);
+}
+
+.room-pill {
+  font-size: 0.74rem;
+  color: var(--steam-muted);
+  margin-left: 0.4rem;
+}
+
+.hud-btn {
+  padding: 0.36rem 0.72rem;
+  border-radius: 6px;
+  border: 1px solid var(--steam-border);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.hud-btn-exit {
+  background: rgba(239, 68, 68, 0.28) !important;
+  border-color: rgba(239, 68, 68, 0.55) !important;
 }
 
 /* ==========================================================================
@@ -704,10 +893,10 @@ button.status-chip:hover {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 0.7rem calc(1rem + var(--safe-right)) calc(0.85rem + var(--safe-bottom)) calc(1rem + var(--safe-left));
-  background: linear-gradient(180deg, rgba(18, 26, 36, 0.96) 0%, rgba(10, 14, 20, 0.99) 100%);
+  padding: 0.65rem calc(1rem + var(--safe-right)) calc(0.8rem + var(--safe-bottom)) calc(1rem + var(--safe-left));
+  background: linear-gradient(180deg, rgba(16, 23, 33, 0.96) 0%, rgba(8, 12, 17, 0.99) 100%);
   border-top: 1px solid rgba(255, 255, 255, 0.12);
-  gap: 0.75rem;
+  gap: 0.65rem;
   z-index: 25;
 }
 
@@ -726,37 +915,34 @@ button.status-chip:hover {
 }
 
 .vpad-shoulder-btn {
-  min-width: 58px;
-  height: 36px;
+  min-width: 56px;
+  height: 34px;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   background: rgba(38, 52, 71, 0.85);
   color: #e2e8f0;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 800;
-  letter-spacing: 0.04em;
   touch-action: none;
   cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15), 0 4px 10px rgba(0, 0, 0, 0.4);
 }
 
 .vpad-meta-btn {
-  min-width: 64px;
-  height: 30px;
-  padding: 0 0.65rem;
+  min-width: 62px;
+  height: 28px;
+  padding: 0 0.6rem;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: rgba(255, 255, 255, 0.08);
   color: #cbd5e1;
-  font-size: 0.68rem;
+  font-size: 0.66rem;
   font-weight: 800;
-  letter-spacing: 0.06em;
   touch-action: none;
   cursor: pointer;
 }
 
 .vpad-start-btn {
-  background: rgba(26, 159, 255, 0.22);
+  background: rgba(26, 159, 255, 0.24);
   border-color: rgba(26, 159, 255, 0.45);
   color: #ffffff;
 }
@@ -765,14 +951,13 @@ button.status-chip:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.25rem 0.35rem;
+  padding: 0.2rem 0.3rem;
 }
 
-/* 8-Way Vector D-Pad */
 .vpad-dpad {
   position: relative;
-  width: 148px;
-  height: 148px;
+  width: 144px;
+  height: 144px;
   border-radius: 50%;
   background: radial-gradient(circle at 50% 50%, rgba(30, 42, 58, 0.92) 0%, rgba(15, 22, 32, 0.96) 100%);
   border: 2px solid rgba(255, 255, 255, 0.15);
@@ -782,18 +967,17 @@ button.status-chip:hover {
 
 .dpad-arm {
   position: absolute;
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(45, 62, 84, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.14);
   color: #94a3b8;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 900;
   pointer-events: none;
-  transition: background 0.06s, color 0.06s, transform 0.06s;
 }
 
 .dpad-up {
@@ -834,32 +1018,30 @@ button.status-chip:hover {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 38px;
-  height: 38px;
-  margin-top: -19px;
-  margin-left: -19px;
+  width: 36px;
+  height: 36px;
+  margin-top: -18px;
+  margin-left: -18px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.12);
   border: 1px solid rgba(255, 255, 255, 0.22);
   pointer-events: none;
-  transition: transform 0.04s linear;
 }
 
-/* Diamond Face Buttons (Y / X / B / A) */
 .vpad-diamond {
   position: relative;
-  width: 156px;
-  height: 156px;
+  width: 152px;
+  height: 152px;
   touch-action: none;
 }
 
 .vpad-face-btn {
   position: absolute;
-  width: 54px;
-  height: 54px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.24);
-  font-size: 1.02rem;
+  font-size: 0.98rem;
   font-weight: 900;
   color: #ffffff;
   display: flex;
@@ -867,8 +1049,7 @@ button.status-chip:hover {
   justify-content: center;
   touch-action: none;
   cursor: pointer;
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.55), inset 0 2px 3px rgba(255, 255, 255, 0.25);
-  transition: transform 0.05s ease, filter 0.05s ease;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.55);
 }
 
 .vpad-btn-x {
@@ -897,7 +1078,7 @@ button.status-chip:hover {
   left: 50%;
   transform: translateX(-50%);
   background: linear-gradient(145deg, #eab308, #ca8a04);
-  color: #0e141b;
+  color: #080c11;
 }
 
 .vpad-face-btn.active,
@@ -908,9 +1089,8 @@ button.status-chip:hover {
   box-shadow: 0 0 18px rgba(255, 255, 255, 0.7);
 }
 
-/* Controller-Only Second Screen Mode */
 .viewport-wrapper.gamepad-only-mode .stage-screen-area {
-  flex: 0 0 130px;
+  flex: 0 0 120px;
 }
 
 .viewport-wrapper.gamepad-only-mode .virtual-gamepad {
@@ -918,7 +1098,6 @@ button.status-chip:hover {
   justify-content: space-around;
 }
 
-/* Mobile Landscape Handheld Mode (Steam Deck / Backbone Overlay) */
 @media (orientation: landscape) and (max-height: 600px) {
   .virtual-gamepad {
     position: absolute;
@@ -926,7 +1105,7 @@ button.status-chip:hover {
     background: transparent;
     border-top: none;
     pointer-events: none;
-    padding: 0.45rem calc(0.85rem + var(--safe-right)) calc(0.55rem + var(--safe-bottom)) calc(0.85rem + var(--safe-left));
+    padding: 2.6rem calc(0.85rem + var(--safe-right)) calc(0.55rem + var(--safe-bottom)) calc(0.85rem + var(--safe-left));
   }
 
   .vpad-shoulder-btn,
@@ -939,36 +1118,27 @@ button.status-chip:hover {
   }
 }
 
-.ingame-sidebar {
-  background: #0e141b;
-  border-left: 1px solid var(--steam-border);
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
 .sidebar-block h3 {
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   text-transform: uppercase;
   color: var(--steam-muted);
-  margin-bottom: 0.55rem;
+  margin-bottom: 0.45rem;
 }
 
 .controller-slots {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.35rem;
 }
 
 .slot-item {
   display: flex;
   justify-content: space-between;
-  padding: 0.42rem 0.65rem;
+  padding: 0.4rem 0.6rem;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.06);
-  font-size: 0.78rem;
+  font-size: 0.76rem;
 }
 
 .slot-item.occupied {
@@ -985,11 +1155,11 @@ button.status-chip:hover {
 .chat-messages {
   flex: 1;
   overflow-y: auto;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  margin-bottom: 0.6rem;
+  gap: 0.32rem;
+  margin-bottom: 0.5rem;
 }
 
 .chat-form {
@@ -1002,7 +1172,7 @@ button.status-chip:hover {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid var(--steam-border);
   border-radius: 6px;
-  padding: 0.4rem 0.6rem;
+  padding: 0.38rem 0.55rem;
   color: #fff;
   user-select: text;
   -webkit-user-select: text;
@@ -1011,26 +1181,27 @@ button.status-chip:hover {
 /* Quick Access Menu (•••) Drawer & Dialogs */
 dialog.console-dialog {
   margin: auto;
-  width: min(440px, 94vw);
+  width: min(430px, 94vw);
   max-height: 88dvh;
-  background: #16202d;
+  background: rgba(16, 24, 35, 0.96);
+  backdrop-filter: blur(24px);
   color: var(--steam-text);
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 14px;
   padding: 0;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.9);
 }
 
 dialog.console-dialog::backdrop {
-  background: rgba(0, 0, 0, 0.62);
-  backdrop-filter: blur(6px);
+  background: rgba(0, 0, 0, 0.68);
+  backdrop-filter: blur(8px);
 }
 
 .qam-content {
-  padding: 1.25rem;
+  padding: 1.2rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.95rem;
 }
 
 .qam-header {
@@ -1040,7 +1211,7 @@ dialog.console-dialog::backdrop {
 }
 
 .qam-header h2 {
-  font-size: 1.05rem;
+  font-size: 1rem;
 }
 
 .qam-close {
@@ -1054,11 +1225,11 @@ dialog.console-dialog::backdrop {
 .qam-section {
   display: flex;
   flex-direction: column;
-  gap: 0.42rem;
+  gap: 0.4rem;
 }
 
 .qam-label {
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -1066,12 +1237,12 @@ dialog.console-dialog::backdrop {
 }
 
 .qam-input {
-  background: rgba(0, 0, 0, 0.32);
+  background: rgba(0, 0, 0, 0.36);
   border: 1px solid var(--steam-border);
   border-radius: 8px;
-  padding: 0.55rem 0.75rem;
+  padding: 0.52rem 0.7rem;
   color: #ffffff;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
   user-select: text;
   -webkit-user-select: text;
 }
@@ -1079,47 +1250,48 @@ dialog.console-dialog::backdrop {
 .qam-btn-stack {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.45rem;
 }
 
 .qam-action-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0.65rem 0.9rem;
+  padding: 0.62rem 0.85rem;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid var(--steam-border);
   color: #ffffff;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 700;
   cursor: pointer;
   text-align: center;
 }
 
 .qam-action-btn:hover {
-  background: rgba(255, 255, 255, 0.16);
+  background: rgba(26, 159, 255, 0.24);
+  border-color: var(--steam-blue);
 }
 
 .qam-rooms-list {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  font-size: 0.82rem;
+  gap: 0.4rem;
+  font-size: 0.8rem;
   color: var(--steam-muted);
 }
 
 .qam-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 0.6rem;
+  gap: 0.55rem;
 }
 
 .progress-box {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  font-size: 0.78rem;
+  gap: 0.3rem;
+  font-size: 0.76rem;
 }
 
 .progress-bar {
@@ -1135,21 +1307,17 @@ dialog.console-dialog::backdrop {
   background: var(--steam-blue);
 }
 
-/* Persistent SteamOS Bottom Bar */
+/* Persistent Steam Deck Bottom Bar */
 .steamos-bottombar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  min-height: calc(48px + var(--safe-bottom));
-  z-index: 40;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.35rem calc(1.5rem + var(--safe-right)) calc(0.35rem + var(--safe-bottom)) calc(1.5rem + var(--safe-left));
-  background: rgba(10, 14, 20, 0.94);
-  backdrop-filter: blur(14px);
-  border-top: 1px solid var(--steam-border);
+  padding: 0.45rem calc(1.8rem + var(--safe-right)) calc(0.45rem + var(--safe-bottom)) calc(1.8rem + var(--safe-left));
+  background: rgba(6, 9, 14, 0.92);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 30;
 }
 
 .bottom-left,
@@ -1166,7 +1334,7 @@ dialog.console-dialog::backdrop {
   background: transparent;
   border: none;
   color: #dce4ee;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 700;
   cursor: pointer;
 }
@@ -1175,60 +1343,33 @@ dialog.console-dialog::backdrop {
   color: #ffffff;
 }
 
-/* ==========================================================================
-   Responsive Adaptations for Smartphones & Tablets (Portrait & Compact)
-   ========================================================================== */
-@media (max-width: 960px) {
-  .steamos-hero {
-    grid-template-columns: 1fr;
-    padding: 1.2rem 1.35rem;
-  }
-
-  .hero-preview-frame {
-    display: none;
-  }
-}
-
-@media (max-width: 680px) {
+@media (max-width: 720px) {
   .steamos-topbar {
     flex-wrap: wrap;
-    padding: calc(0.55rem + var(--safe-top)) 0.9rem 0.55rem;
-    gap: 0.5rem;
+    padding: calc(0.5rem + var(--safe-top)) 0.85rem 0.4rem;
+  }
+
+  .bazzite-bg-art {
+    width: 100vw;
+    height: 62dvh;
   }
 
   .search-pill input {
-    width: 105px;
+    width: 82px;
   }
 
   .system-clock,
-  .desktop-only-prompt {
+  .desktop-only-prompt,
+  .steamos-telemetry-box {
     display: none;
   }
 
-  .steamos-main {
-    padding: 0.65rem 0.9rem 1.8rem;
-    gap: 1.15rem;
-  }
-
-  .capsules-grid {
-    grid-template-columns: repeat(auto-fill, minmax(134px, 1fr));
-    gap: 0.8rem;
-  }
-
-  .capsule-play-pill {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  .ingame-Sidebar,
-  .ingame-sidebar {
-    position: absolute;
-    inset: 0;
-    z-index: 35;
+  .bazzite-stage {
+    padding: 0 0.85rem 0.4rem;
   }
 
   .steamos-bottombar {
-    padding-left: 0.9rem;
-    padding-right: 0.9rem;
+    padding-left: 0.85rem;
+    padding-right: 0.85rem;
   }
 }
