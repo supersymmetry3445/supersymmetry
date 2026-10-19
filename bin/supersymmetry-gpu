@@ -1,0 +1,131 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+RUNTIME_DIR="${ROOT_DIR}/gpu-node/.runtime"
+PID_FILE="${RUNTIME_DIR}/heartbeat.pid"
+TUNNEL_PID_FILE="${RUNTIME_DIR}/tunnel.pid"
+TUNNEL_LOG="${RUNTIME_DIR}/tunnel.log"
+
+HUB_URL="${SUPERSYMMETRY_HUB_URL:-https://superssymetry.kalopsia.me}"
+GPU_TOKEN="${GPU_NODE_TOKEN:-supersymmetry-rtx3050-local-key}"
+ACTIVE_GAME="${SUPERSYMMETRY_GAME:-PCSX2 · Bomba Patch PS2 (RTX 3050 NVENC)}"
+LOCAL_STREAM_PORT="${LOCAL_STREAM_PORT:-3001}"
+
+mkdir -p "${RUNTIME_DIR}"
+
+query_nvidia_json() {
+  if command -v nvidia-smi >/dev/null 2>&1; then
+    local line
+    line="$(nvidia-smi --query-gpu=name,memory.total,memory.used,temperature.gpu,utilization.gpu,power.draw --format=csv,noheader,nounits | head -n 1)"
+    IFS=',' read -r gpu_name mem_total mem_used temp util power <<< "${line}"
+    gpu_name="$(echo "${gpu_name}" | xargs)"
+    mem_total="$(echo "${mem_total}" | xargs | cut -d. -f1)"
+    mem_used="$(echo "${mem_used}" | xargs | cut -d. -f1)"
+    temp="$(echo "${temp}" | xargs | cut -d. -f1)"
+    util="$(echo "${util}" | xargs | cut -d. -f1)"
+    power="$(echo "${power}" | xargs | cut -d. -f1)"
+    printf '{"gpuModel":"%s","encoder":"NVENC H.264 / HEVC Zero-Copy + Vulkan","vramTotalMiB":%s,"vramUsedMiB":%s,"temperatureC":%s,"utilizationPct":%s,"powerDrawW":%s,"hostMachine":"%s","activeGame":"%s","streamUrl":"%s"}' \
+      "${gpu_name}" "${mem_total:-6144}" "${mem_used:-0}" "${temp:-40}" "${util:-0}" "${power:-15}" "$(hostname)" "${ACTIVE_GAME}" "${1:-}"
+  else
+    printf '{"gpuModel":"NVIDIA GeForce RTX 3050 6GB Laptop GPU","encoder":"NVENC H.264 / HEVC Zero-Copy + Vulkan","vramTotalMiB":6144,"vramUsedMiB":512,"temperatureC":44,"utilizationPct":8,"powerDrawW":18,"hostMachine":"%s","activeGame":"%s","streamUrl":"%s"}' \
+      "$(hostname)" "${ACTIVE_GAME}" "${1:-}"
+  fi
+}
+
+send_heartbeat() {
+  local stream_url="${1:-}"
+  local payload
+  payload="$(query_nvidia_json "${stream_url}")"
+  curl -sS -X POST "${HUB_URL}/api/gpu/heartbeat" \
+    -H "Content-Type: application/json" \
+    -H "X-GPU-Token: ${GPU_TOKEN}" \
+    -d "${payload}" >/dev/null || true
+}
+
+start_node() {
+  echo "🌌 [Supersymmetry] Ativando Nó Híbrido GPU Local (NVIDIA GeForce RTX 3050)..."
+  if command -v nvidia-smi >/dev/null 2>&1; then
+    nvidia-smi --query-gpu=name,driver_version,memory.total,temperature.gpu --format=table
+  fi
+
+  local stream_url="${SUPERSYMMETRY_STREAM_URL:-https://localhost:${LOCAL_STREAM_PORT}}"
+
+  if command -v docker >/dev/null 2>&1 && [ "${SKIP_DOCKER:-0}" != "1" ]; then
+    echo "🚀 Subindo container WebRTC acelerado por NVENC (gpu-node/docker-compose.gpu.yml)..."
+    docker compose -f "${ROOT_DIR}/gpu-node/docker-compose.gpu.yml" up -d || true
+  fi
+
+  if command -v cloudflared >/dev/null 2>&1 && [ -z "${SUPERSYMMETRY_STREAM_URL:-}" ]; then
+    echo "🌐 Criando túnel HTTPS para o stream WebRTC da RTX 3050..."
+    nohup cloudflared tunnel --url "https://localhost:${LOCAL_STREAM_PORT}" --no-tls-verify > "${TUNNEL_LOG}" 2>&1 &
+    echo $! > "${TUNNEL_PID_FILE}"
+    sleep 3
+    local detected_url
+    detected_url="$(grep -oE 'https://[a-zA-Z0-9-]+\\.trycloudflare\\.com' "${TUNNEL_LOG}" | head -n 1 || true)"
+    if [ -n "${detected_url}" ]; then
+      stream_url="${detected_url}"
+    fi
+  fi
+
+  send_heartbeat "${stream_url}"
+
+  if [ -f "${PID_FILE}" ] && kill -0 "$(cat "${PID_FILE}")" 2>/dev/null; then
+    kill "$(cat "${PID_FILE}")" || true
+  fi
+
+  (
+    while true; do
+      send_heartbeat "${stream_url}"
+      sleep 15
+    done
+  ) >/dev/null 2>&1 &
+  echo $! > "${PID_FILE}"
+
+  echo "✅ RTX 3050 ONLINE e sincronizada com ${HUB_URL}!"
+  echo "🎮 Stream URL: ${stream_url}"
+  echo "💡 Para desligar e voltar a GPU para 0W, rode: ./bin/supersymmetry-gpu stop"
+}
+
+stop_node() {
+  echo "🛑 [Supersymmetry] Desligando Nó GPU Local (RTX 3050)..."
+  if [ -f "${PID_FILE}" ]; then
+    kill "$(cat "${PID_FILE}")" 2>/dev/null || true
+    rm -f "${PID_FILE}"
+  fi
+  if [ -f "${TUNNEL_PID_FILE}" ]; then
+    kill "$(cat "${TUNNEL_PID_FILE}")" 2>/dev/null || true
+    rm -f "${TUNNEL_PID_FILE}"
+  fi
+  if command -v docker >/dev/null 2>&1 && [ "${SKIP_DOCKER:-0}" != "1" ]; then
+    docker compose -f "${ROOT_DIR}/gpu-node/docker-compose.gpu.yml" down 2>/dev/null || true
+  fi
+  curl -sS -X POST "${HUB_URL}/api/gpu/offline" \
+    -H "X-GPU-Token: ${GPU_TOKEN}" >/dev/null || true
+  echo "✅ RTX 3050 desligada (Standby 0W) e status atualizado em ${HUB_URL}."
+}
+
+status_node() {
+  echo "🔎 [Supersymmetry] Status da GPU Local e do Hub (${HUB_URL}):"
+  if command -v nvidia-smi >/dev/null 2>&1; then
+    nvidia-smi --query-gpu=name,memory.used,memory.total,temperature.gpu,utilization.gpu,power.draw --format=table
+  fi
+  curl -sS "${HUB_URL}/api/gpu/status" | sed 's/,/,\n  /g' || true
+  echo ""
+}
+
+case "${1:-status}" in
+  start|on)
+    start_node
+    ;;
+  stop|off)
+    stop_node
+    ;;
+  status)
+    status_node
+    ;;
+  *)
+    echo "Uso: $0 {start|stop|status}"
+    exit 1
+    ;;
+esac

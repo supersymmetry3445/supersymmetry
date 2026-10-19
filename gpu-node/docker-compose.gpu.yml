@@ -1,0 +1,32 @@
+services:
+  supersymmetry-rtx3050:
+    image: lscr.io/linuxserver/webtop:ubuntu-mate
+    container_name: supersymmetry-rtx3050
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Sao_Paulo
+      - TITLE=Supersymmetry RTX 3050 (PS2 / PCSX2)
+      - SELKIES_ENCODER=nvh264enc
+      - SELKIES_ENABLE_RESIZE=true
+      - SELKIES_FRAMERATE=60
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - ./config:/config
+      - ../data/roms:/roms
+      - ../data/saves:/saves
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    shm_size: "2gb"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu, video, compute, utility]
+    restart: "no"

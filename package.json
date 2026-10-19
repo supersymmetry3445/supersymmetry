@@ -1,0 +1,20 @@
+{
+  "name": "supersymmetry-console",
+  "version": "1.0.0",
+  "description": "Supersymmetry — Hybrid Retro Web Console (WASM P2P) & On-Demand Local RTX 3050 GPU Node",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node --max-old-space-size=128 src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test test/server.test.js",
+    "gpu:start": "./bin/supersymmetry-gpu start",
+    "gpu:stop": "./bin/supersymmetry-gpu stop",
+    "gpu:status": "./bin/supersymmetry-gpu status"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
