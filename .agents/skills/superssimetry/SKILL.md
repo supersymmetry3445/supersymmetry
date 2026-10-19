@@ -11,8 +11,10 @@ Você ativou o modo **`/superssimetry`**, a inteligência central do repositóri
 > **ISOLAMENTO ESTRITO DE PROJETO:**
 > O **Supersymmetry** é um ecossistema 100% independente e isolado de qualquer outro projeto que rode na mesma VPS.
 > - **Domínio Público:** `https://superssymetry.kalopsia.me`
+> - **Repositório GitHub:** `https://github.com/supersymmetry3445/supersymmetry`
 > - **Coolify Project UUID:** `b0ialzsu5xdxdjl3ws7ygbl9` (`Superssymetry`)
 > - **Coolify Environment UUID:** `7ostydtt8zrprbkmwz52wcuj` (`production`)
+> - **Coolify Application UUID:** `zt3tytvpfgazxuxsbk1m71hq` (`supersymmetry-console`)
 > - **Coolify Server UUID:** `sfgh0o8rgftpkamtisb39uy4`
 > - **Painel Coolify do Projeto:** `http://100.65.233.79:8000/project/b0ialzsu5xdxdjl3ws7ygbl9/environment/7ostydtt8zrprbkmwz52wcuj`
 > - **NUNCA** altere, consulte ou misture recursos, variáveis ou bancos de dados de outros projetos do Coolify. Toda operação de deploy e monitoramento deve filtrar exclusivamente por `project_uuid: "b0ialzsu5xdxdjl3ws7ygbl9"`.
