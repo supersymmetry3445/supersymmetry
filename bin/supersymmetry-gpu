@@ -46,7 +46,7 @@ send_heartbeat() {
 start_node() {
   echo "🌌 [Supersymmetry] Ativando Nó Híbrido GPU Local (NVIDIA GeForce RTX 3050)..."
   if command -v nvidia-smi >/dev/null 2>&1; then
-    nvidia-smi --query-gpu=name,driver_version,memory.total,temperature.gpu --format=table
+    nvidia-smi --query-gpu=name,driver_version,memory.total,temperature.gpu --format=csv
   fi
 
   local stream_url="${SUPERSYMMETRY_STREAM_URL:-https://localhost:${LOCAL_STREAM_PORT}}"
@@ -108,7 +108,7 @@ stop_node() {
 status_node() {
   echo "🔎 [Supersymmetry] Status da GPU Local e do Hub (${HUB_URL}):"
   if command -v nvidia-smi >/dev/null 2>&1; then
-    nvidia-smi --query-gpu=name,memory.used,memory.total,temperature.gpu,utilization.gpu,power.draw --format=table
+    nvidia-smi --query-gpu=name,memory.used,memory.total,temperature.gpu,utilization.gpu,power.draw --format=csv
   fi
   curl -sS "${HUB_URL}/api/gpu/status" | sed 's/,/,\n  /g' || true
   echo ""
