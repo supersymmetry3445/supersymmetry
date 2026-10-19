@@ -16,32 +16,28 @@
   <input type="checkbox" id="iosHapticSwitch" switch class="sr-only" aria-hidden="true" tabindex="-1" />
   <label for="iosHapticSwitch" id="iosHapticLabel" class="sr-only" aria-hidden="true"></label>
 
-  <!-- Full-Bleed Bazzite / SteamOS "Art Hero" Dynamic Background Layers -->
-  <div class="bazzite-bg-blur" id="heroBackdrop"></div>
-  <div class="bazzite-bg-art" id="heroSnapArt">
-    <img id="heroSnapImg" src="" alt="" loading="eager" />
-  </div>
-  <div class="bazzite-bg-vignette"></div>
+  <!-- Plane Z-0: Netflix Games Multi-Layer Ambient Atmosphere -->
+  <div class="netflix-ambient-backdrop" id="heroBackdrop"></div>
+  <div class="netflix-ambient-aura" id="heroAmbientAura"></div>
+  <div class="netflix-vignette"></div>
 
-  <!-- Console OS Shell (Fixed 100vw x 100dvh, Zero Webpage Scroll) -->
+  <!-- Console OS Shell (Fixed 100vw x 100dvh, Generous Spatial Margins) -->
   <div class="console-os-shell" id="homeView">
-    <!-- Top Bazzite / SteamOS System HUD Bar -->
+    <!-- Top Netflix Games / Hawkins 2025 Spatial Navigation Bar -->
     <header class="steamos-topbar">
       <div class="topbar-left">
-        <div class="bazzite-brand" title="Bazzite / SteamOS GamepadUI">
-          <span class="bazzite-dot"></span>
-          <span>DECK OS</span>
+        <div class="netflix-brand" title="Supersymmetry Games Hub">
+          <span class="netflix-n">N</span>
+          <span class="netflix-brand-text">GAMES</span>
         </div>
 
-        <span class="bumper-pill desktop-only-prompt" aria-hidden="true">L1</span>
         <nav class="steamos-tabs" id="consoleTabs" aria-label="Categorias do Console"></nav>
-        <span class="bumper-pill desktop-only-prompt" aria-hidden="true">R1</span>
       </div>
 
       <div class="topbar-right">
         <div class="search-pill">
           <span aria-hidden="true">🔍</span>
-          <input id="searchInput" type="search" placeholder="Filtrar..." autocomplete="off" />
+          <input id="searchInput" type="search" placeholder="Buscar título..." autocomplete="off" />
         </div>
 
         <button type="button" class="status-chip" id="openRoomsDrawerBtn" title="Salas Multiplayer Abertas">
@@ -62,35 +58,60 @@
       </div>
     </header>
 
-    <!-- Upper Stage: Unobstructed "Art Hero" Game Spotlight -->
+    <!-- Main Spatial Stage: Two-Column Hero Showcase + Uncropped Cover Carousel -->
     <main class="bazzite-stage">
-      <section class="art-hero-spotlight" id="heroSection" aria-label="Jogo Selecionado">
-        <div class="hero-tags">
-          <span class="tag-pill tag-bazzite">BAZZITE // VERIFIED</span>
-          <span class="tag-pill tag-system" id="heroConsoleTag">SUPER NINTENDO</span>
-          <span class="tag-pill tag-players" id="heroPlayersTag">ATÉ 4 JOGADORES</span>
-          <span class="tag-pill tag-verified" id="heroStatusTag">PRONTO PARA JOGAR</span>
-        </div>
-
-        <h1 class="hero-title" id="heroTitle">Super Bomberman 4</h1>
-        <p class="hero-subtitle" id="heroSubtitle">Party / Battle 4 Jogadores</p>
-
-        <!-- Iconic SteamOS Action Strip -->
-        <div class="steamos-play-strip">
-          <button type="button" class="btn-steam-play" id="heroPlayBtn">
-            <span class="glyph glyph-a">A</span>
-            <span id="heroPlayBtnText">▶ JOGAR</span>
-          </button>
-
-          <div class="steamos-telemetry-box">
-            <span class="telemetry-label">MODO CONSOLE</span>
-            <strong class="telemetry-val">60 FPS · P2P</strong>
+      <!-- Plane Z-1: Netflix Games Billboard Hero (Editorial Left + 3D Cover Art Showcase Right) -->
+      <section class="netflix-hero-grid" id="heroSection" aria-label="Jogo em Destaque">
+        <div class="hero-editorial-col">
+          <div class="netflix-series-eyebrow">
+            <span class="eyebrow-n-pill">N</span>
+            <span class="eyebrow-label">JOGOS DE CONSOLE · SEM DOWNLOAD</span>
           </div>
 
-          <button type="button" class="btn-steam-action" id="heroPartyBtn">
-            <span class="glyph glyph-x">X</span>
-            <span>Salas Multiplayer</span>
-          </button>
+          <h1 class="hero-title" id="heroTitle">Super Bomberman 4</h1>
+
+          <div class="hero-tags">
+            <span class="meta-badge meta-match" id="heroStatusTag">99% relevante</span>
+            <span class="meta-badge meta-year" id="heroYearTag">1996</span>
+            <span class="meta-badge meta-system" id="heroConsoleTag">Super Nintendo</span>
+            <span class="meta-badge meta-players" id="heroPlayersTag">Até 4 Jogadores</span>
+            <span class="meta-badge meta-hd">60 FPS · P2P</span>
+          </div>
+
+          <p class="hero-synopsis" id="heroSynopsis">
+            Monte montarias especiais, lance bombas através da arena e dispute partidas explosivas para até 4 amigos simultâneos.
+          </p>
+          <p class="hero-subtitle" id="heroSubtitle">Party · Arena 4 Jogadores</p>
+
+          <!-- Netflix Games Clean CTA Row -->
+          <div class="netflix-cta-row">
+            <button type="button" class="btn-netflix-play" id="heroPlayBtn">
+              <span class="play-icon-triangle">▶</span>
+              <span id="heroPlayBtnText">Jogar</span>
+              <span class="glyph glyph-a">A</span>
+            </button>
+
+            <button type="button" class="btn-netflix-secondary" id="heroPartyBtn">
+              <span>Salas Multiplayer</span>
+              <span class="glyph glyph-x">X</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Dedicated Right Stage: Floating 3D Cover Art + Angled Gameplay Preview with Generous Margin -->
+        <div class="hero-cover-showcase" id="heroShowcaseStage" aria-hidden="true">
+          <div class="hero-cover-glow" id="heroCoverGlow"></div>
+
+          <!-- Midground Z-Layer: Angled In-Game Screenshot Card -->
+          <div class="hero-snap-card" id="heroSnapArt">
+            <img id="heroSnapImg" src="" alt="" loading="eager" />
+            <span class="snap-card-badge">GAMEPLAY AO VIVO</span>
+          </div>
+
+          <!-- Foreground Z-Layer: Uncropped Original Box Art with 3D Elevation & Generous Margin -->
+          <div class="hero-boxart-pedestal" id="heroBoxartFrame">
+            <img id="heroBoxartImg" src="" alt="" loading="eager" />
+          </div>
         </div>
       </section>
 
@@ -99,12 +120,12 @@
         <div class="rooms-row" id="roomsGrid"></div>
       </section>
 
-      <!-- Lower Stage: Iconic SteamOS Horizontal Capsule Carousel -->
-      <section class="carousel-deck-section" aria-label="Carrossel de Jogos">
+      <!-- Plane Z-2: Netflix Games Horizontal Row (Uncropped Cover Pedestals with Breathing Margin) -->
+      <section class="carousel-deck-section" aria-label="Fileira de Jogos">
         <div class="carousel-header-row">
           <div class="carousel-section-title">
-            <h2 id="shelfTitle">Recentes &amp; Destaques</h2>
-            <span class="shelf-count" id="shelfCountLabel">24 jogos</span>
+            <h2 id="shelfTitle">Populares na Netflix Games</h2>
+            <span class="shelf-count" id="shelfCountLabel">24 títulos</span>
           </div>
 
           <div class="carousel-nav-arrows">
@@ -117,31 +138,31 @@
       </section>
     </main>
 
-    <!-- Persistent Steam Deck Bottom Prompt Bar -->
+    <!-- Subtle Bottom Console Controller Hints -->
     <footer class="steamos-bottombar">
       <div class="bottom-left">
         <button type="button" class="bottom-prompt" id="bottomMenuBtn">
-          <span class="glyph glyph-steam">STEAM</span>
-          <span>Menu</span>
+          <span class="glyph glyph-steam">MENU</span>
+          <span>Opções</span>
         </button>
         <button type="button" class="bottom-prompt" id="toggleUiSoundBtn" title="Sons do Console">
           <span class="glyph glyph-bumper" id="uiSoundGlyph">🔊</span>
-          <span>Som UI</span>
+          <span>Áudio UI</span>
         </button>
       </div>
 
       <div class="bottom-right">
         <div class="bottom-prompt desktop-only-prompt">
-          <span class="glyph glyph-bumper">◀ / ▶</span>
-          <span>Navegar</span>
+          <span class="glyph glyph-bumper">◀ ▶</span>
+          <span>Explorar Capas</span>
         </div>
         <div class="bottom-prompt desktop-only-prompt">
           <span class="glyph glyph-bumper">L1 / R1</span>
-          <span>Sistema</span>
+          <span>Categorias</span>
         </div>
         <button type="button" class="bottom-prompt" id="bottomImportBtn">
           <span class="glyph glyph-y">Y</span>
-          <span>Importar</span>
+          <span>Cartucho Local</span>
         </button>
         <button type="button" class="bottom-prompt" id="bottomPartyBtn">
           <span class="glyph glyph-x">X</span>
@@ -149,7 +170,7 @@
         </button>
         <button type="button" class="bottom-prompt" id="bottomPlayBtn">
           <span class="glyph glyph-a">A</span>
-          <span>Iniciar</span>
+          <span>Jogar</span>
         </button>
       </div>
     </footer>

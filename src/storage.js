@@ -56,8 +56,11 @@ function mapCustomRomToDeckItem(rom) {
     maxPlayers: rom.maxPlayers || 4,
     category: 'custom',
     genre: rom.consoleName,
-    boxartUrl: rom.boxartUrl || null,
-    snapUrl: rom.snapUrl || null,
+    year: 'Custom',
+    accent: '#e50914',
+    synopsis: 'Cartucho personalizado instalado na biblioteca do console com suporte multiplayer P2P.',
+    boxartUrl: rom.boxartUrl || '',
+    snapUrl: rom.snapUrl || '',
     installed: true,
     hasSave: Boolean(rom.hasSave),
     sizeBytes: rom.sizeBytes

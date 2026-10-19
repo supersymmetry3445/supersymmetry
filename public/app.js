@@ -214,7 +214,7 @@ function renderCapsulesGrid() {
   const grid = document.getElementById('capsulesGrid');
   const countEl = document.getElementById('shelfCountLabel');
   grid.innerHTML = '';
-  countEl.textContent = `${state.filteredGames.length} jogos`;
+  countEl.textContent = `${state.filteredGames.length} títulos`;
 
   state.filteredGames.forEach((game, idx) => {
     const card = document.createElement('div');
@@ -229,12 +229,15 @@ function renderCapsulesGrid() {
       : `<div class="capsule-fallback">${escapeHtml(game.title)}</div>`;
 
     card.innerHTML = `
-      ${imgHtml}
-      <span class="capsule-system-tag">${escapeHtml(game.consoleName)}</span>
-      <span class="capsule-players-tag">${game.maxPlayers}P</span>
-      <div class="capsule-overlay">
+      <div class="capsule-pedestal">
+        <div class="capsule-ambient" style="background-image: url('${escapeHtml(game.boxartUrl || '')}')"></div>
+        <div class="capsule-art-wrap">${imgHtml}</div>
+      </div>
+      <div class="capsule-meta">
         <div class="capsule-title">${escapeHtml(game.title)}</div>
-        <div class="capsule-play-pill">[A] JOGAR</div>
+        <div class="capsule-submeta">
+          <span>${escapeHtml(game.consoleName)}</span><span class="meta-dot">•</span><span>${game.maxPlayers}P</span>
+        </div>
       </div>
     `;
 
@@ -307,20 +310,19 @@ function updateHeroSpotlight() {
   const game = state.filteredGames[state.focusedIndex];
   if (!game) return;
 
+  document.documentElement.style.setProperty('--game-accent', game.accent);
+  document.getElementById('heroYearTag').textContent = game.year;
   document.getElementById('heroConsoleTag').textContent = game.consoleName;
   document.getElementById('heroPlayersTag').textContent =
-    game.maxPlayers > 1 ? `ATÉ ${game.maxPlayers} JOGADORES` : '1 JOGADOR';
-  document.getElementById('heroStatusTag').textContent = 'PRONTO NO CONSOLE';
+    game.maxPlayers > 1 ? `Até ${game.maxPlayers} Jogadores` : '1 Jogador';
+  document.getElementById('heroStatusTag').textContent = '99% relevante';
   document.getElementById('heroTitle').textContent = game.title;
-  document.getElementById('heroSubtitle').textContent = game.genre || game.consoleName;
+  document.getElementById('heroSubtitle').textContent = game.genre;
+  document.getElementById('heroSynopsis').textContent = game.synopsis;
 
-  const artwork = game.snapUrl || game.boxartUrl || '';
-  const backdrop = document.getElementById('heroBackdrop');
-  const snapImg = document.getElementById('heroSnapImg');
-  if (artwork) {
-    backdrop.style.backgroundImage = `url("${artwork}")`;
-    snapImg.src = artwork;
-  }
+  document.getElementById('heroBackdrop').style.backgroundImage = `url("${game.boxartUrl}")`;
+  document.getElementById('heroBoxartImg').src = game.boxartUrl;
+  document.getElementById('heroSnapImg').src = game.snapUrl;
 }
 
 async function launchFocusedGame() {
