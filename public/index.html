@@ -439,20 +439,20 @@
     </div>
   </aside>
 
-  <!-- Console Sign-In Screen (Reflektor / SteamOS Minimalist Identity) -->
+  <!-- Console Sign-In & Sign-Up Screen (Reflektor / SteamOS Minimalist Identity) -->
   <section id="consoleAuthGate" class="console-auth-gate hidden" aria-label="Iniciar sessão">
     <div class="auth-gate-card">
       <div class="auth-gate-brand">
         <svg class="auth-diamond-svg" aria-hidden="true"><use href="#icon-reflektor-diamond"></use></svg>
         <div class="auth-brand-titles">
           <span class="auth-wordmark">SUPERSYMMETRY</span>
-          <h2 class="auth-gate-title">Iniciar sessão</h2>
+          <h2 class="auth-gate-title" id="consoleAuthHeading">Iniciar sessão</h2>
         </div>
       </div>
 
       <form id="consoleLoginForm" class="auth-gate-form" action="/api/auth/login" method="post">
         <div class="auth-field">
-          <label for="console-username">Conta</label>
+          <label for="console-username">Conta ou E-mail</label>
           <input
             id="console-username"
             name="username"
@@ -461,6 +461,7 @@
             autocapitalize="none"
             autocorrect="off"
             spellcheck="false"
+            enterkeyhint="next"
             required
           />
         </div>
@@ -489,6 +490,64 @@
           <span class="glyph glyph-a">A</span>
         </button>
       </form>
+
+      <form id="consoleSignupForm" class="auth-gate-form hidden" action="/api/auth/register" method="post">
+        <div class="auth-field">
+          <label for="signupDisplayName">Nome</label>
+          <input
+            id="signupDisplayName"
+            name="name"
+            type="text"
+            autocomplete="name"
+            enterkeyhint="next"
+            required
+          />
+        </div>
+
+        <div class="auth-field">
+          <label for="signupEmail">E-mail</label>
+          <input
+            id="signupEmail"
+            name="email"
+            type="email"
+            autocomplete="username"
+            spellcheck="false"
+            enterkeyhint="next"
+            required
+          />
+        </div>
+
+        <div class="auth-field">
+          <label for="new-password">Senha</label>
+          <div class="auth-pwd-wrap">
+            <input
+              id="new-password"
+              name="new-password"
+              type="password"
+              autocomplete="new-password"
+              minlength="6"
+              enterkeyhint="done"
+              required
+            />
+            <button type="button" class="auth-pwd-toggle" id="toggleSignupPwdBtn" aria-label="Alternar visibilidade da senha">
+              <svg class="ui-icon-svg" aria-hidden="true"><use href="#icon-eye"></use></svg>
+            </button>
+          </div>
+        </div>
+
+        <div id="consoleSignupFeedback" class="auth-gate-notice hidden" role="status"></div>
+
+        <button type="submit" class="btn-netflix-play auth-submit-btn" id="consoleSignupSubmitBtn">
+          <span>Criar conta</span>
+          <span class="glyph glyph-a">A</span>
+        </button>
+      </form>
+
+      <div class="auth-mode-switch">
+        <button type="button" class="auth-switch-btn" id="switchAuthModeBtn">
+          Criar conta
+        </button>
+      </div>
     </div>
   </section>
 

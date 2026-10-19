@@ -10,6 +10,15 @@ const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const LOCKOUT_WINDOW_MS = 10 * 60 * 1000;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
 const MAX_FAILED_ATTEMPTS = 5;
+const AUTOBAN_FAILED_ATTEMPTS = 10;
+const HTTP_WINDOW_MS = 60 * 1000;
+const MAX_HTTP_REQ_PER_MIN = 240;
+const AUTOBAN_HTTP_REQ_PER_MIN = 450;
+
+const EXPLOIT_PATH_PREFIX_RE = /^\/(\.env|\.git|wp-admin|wp-login|cgi-bin|boaform|actuator|vendor\/phpunit|shell|eval-stdin)/i;
+const EXPLOIT_EXT_RE = /\.(php|asp|aspx|jsp|cgi)$/i;
+const EMAIL_FORMAT_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const SYSTEM_LOCAL_IPS = new Set(['', '127.0.0.1', '::1', 'localhost']);
 
 function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString('hex');
@@ -82,6 +91,17 @@ function isTailscaleCgnatIp(ip) {
   return isValidTailscaleOctets(octets);
 }
 
+function isExploitProbePath(pathname) {
+  if (!pathname) return false;
+  return EXPLOIT_PATH_PREFIX_RE.test(pathname) || EXPLOIT_EXT_RE.test(pathname);
+}
+
+function isProtectedSystemIp(ip, vpsTailscaleIp) {
+  const clean = String(ip || '').trim();
+  if (SYSTEM_LOCAL_IPS.has(clean)) return true;
+  return clean === vpsTailscaleIp;
+}
+
 function parseCookies(cookieHeader) {
   const out = {};
   if (!cookieHeader) return out;
@@ -108,19 +128,28 @@ function extractRequestToken(req) {
   return '';
 }
 
+function resolveUserStatus(user) {
+  return user.status === 'pending' ? 'pending' : 'active';
+}
+
 function toPublicUser(user) {
+  const status = resolveUserStatus(user);
   return {
     id: user.id,
     username: user.username,
+    email: String(user.email || ''),
     displayName: user.displayName,
     role: user.role,
-    tailscaleIp: user.tailscaleIp || '',
+    status,
+    approved: status === 'active',
+    tailscaleIp: String(user.tailscaleIp || ''),
+    registrationIp: String(user.registrationIp || ''),
     disabled: Boolean(user.disabled),
     createdAt: user.createdAt,
-    lastLoginAt: user.lastLoginAt || null,
-    lastIp: user.lastIp || null,
-    gamesPlayedCount: user.gamesPlayedCount || 0,
-    lastPlayedGame: user.lastPlayedGame || null
+    lastLoginAt: user.lastLoginAt,
+    lastIp: user.lastIp,
+    gamesPlayedCount: Number(user.gamesPlayedCount || 0),
+    lastPlayedGame: user.lastPlayedGame
   };
 }
 
@@ -176,15 +205,57 @@ function sanitizeUsername(username) {
     .replace(/[^a-z0-9_.-]/g, '');
 }
 
+function deriveUniqueUsernameFromEmail(email, existingUsers) {
+  const base = sanitizeUsername(String(email).split('@')[0]) || 'jogador';
+  const candidateBase = base.length >= 2 ? base : `p_${base}`;
+  if (!existingUsers.some((u) => u.username.toLowerCase() === candidateBase)) {
+    return candidateBase;
+  }
+  let counter = 2;
+  while (existingUsers.some((u) => u.username.toLowerCase() === `${candidateBase}${counter}`)) {
+    counter += 1;
+  }
+  return `${candidateBase}${counter}`;
+}
+
+function assertMinPasswordLength(password, minLen, errMsg) {
+  if (!password || String(password).length < minLen) {
+    throw new Error(errMsg);
+  }
+}
+
 function validateNewAccountFields(cleanUsername, password, existingUsers) {
   if (cleanUsername.length < 2) {
     throw new Error('Nome de usuário inválido (mínimo 2 caracteres).');
   }
-  if (!password || String(password).length < 6) {
-    throw new Error('A senha deve ter pelo menos 6 caracteres.');
-  }
+  assertMinPasswordLength(password, 6, 'A senha deve ter pelo menos 6 caracteres.');
   if (existingUsers.some((u) => u.username.toLowerCase() === cleanUsername)) {
     throw new Error('Este nome de usuário já está cadastrado.');
+  }
+}
+
+function isEmailAlreadyRegistered(user, cleanEmail) {
+  if (user.username.toLowerCase() === cleanEmail) return true;
+  return Boolean(user.email && user.email.toLowerCase() === cleanEmail);
+}
+
+function validatePendingRegistrationInput(cleanEmail, password, existingUsers) {
+  if (!EMAIL_FORMAT_RE.test(cleanEmail)) {
+    throw new Error('Informe um endereço de e-mail válido.');
+  }
+  assertMinPasswordLength(password, 6, 'A senha deve ter pelo menos 6 caracteres.');
+  if (existingUsers.some((u) => isEmailAlreadyRegistered(u, cleanEmail))) {
+    throw new Error('Este e-mail já está registrado.');
+  }
+}
+
+function applyNonAdminFlags(user, patch) {
+  if (user.role === 'admin') return;
+  if (patch.status !== undefined) {
+    user.status = patch.status === 'pending' ? 'pending' : 'active';
+  }
+  if (patch.disabled !== undefined) {
+    user.disabled = Boolean(patch.disabled);
   }
 }
 
@@ -195,12 +266,10 @@ function applyUserPatchFields(user, patch) {
   if (patch.tailscaleIp !== undefined) {
     user.tailscaleIp = String(patch.tailscaleIp).trim();
   }
-  if (patch.disabled !== undefined && user.role !== 'admin') {
-    user.disabled = Boolean(patch.disabled);
-  }
   if (patch.password && String(patch.password).length >= 6) {
     user.passwordHash = hashPassword(patch.password);
   }
+  applyNonAdminFlags(user, patch);
 }
 
 class AuthManager {
@@ -212,12 +281,15 @@ class AuthManager {
     this.sessions = [];
     this.accessLogs = [];
     this.gameSessions = [];
+    this.blockedIps = [];
     this.networkConfig = {
       tailscaleLockdown: false,
+      allowSelfRegistration: true,
       tailnetDomain: 'kalopsia.ts.net',
       vpsTailscaleIp: '100.65.233.79'
     };
     this.failedAttempts = new Map();
+    this.httpRateWindows = new Map();
   }
 
   async init() {
@@ -240,6 +312,7 @@ class AuthManager {
     this.sessions = Array.isArray(parsed.sessions) ? parsed.sessions : [];
     this.accessLogs = Array.isArray(parsed.accessLogs) ? parsed.accessLogs : [];
     this.gameSessions = Array.isArray(parsed.gameSessions) ? parsed.gameSessions : [];
+    this.blockedIps = Array.isArray(parsed.blockedIps) ? parsed.blockedIps : [];
     if (parsed.networkConfig) {
       this.networkConfig = { ...this.networkConfig, ...parsed.networkConfig };
     }
@@ -252,6 +325,7 @@ class AuthManager {
         networkConfig: this.networkConfig,
         users: this.users,
         sessions: this.sessions,
+        blockedIps: this.blockedIps.slice(0, 500),
         accessLogs: this.accessLogs.slice(0, 250),
         gameSessions: this.gameSessions.slice(0, 300)
       },
@@ -265,13 +339,18 @@ class AuthManager {
 
   async ensureMasterAdmin() {
     const existingAdmin = this.users.find((u) => u.role === 'admin');
-    if (existingAdmin) return existingAdmin;
+    if (existingAdmin) {
+      existingAdmin.status = 'active';
+      return existingAdmin;
+    }
 
     const adminUser = {
       id: crypto.randomUUID(),
       username: 'admin',
+      email: 'admin@superssymetry.kalopsia.me',
       displayName: 'Admin Master',
       role: 'admin',
+      status: 'active',
       passwordHash: hashPassword(this.initialAdminPassword),
       tailscaleIp: '100.65.233.79',
       disabled: false,
@@ -284,6 +363,112 @@ class AuthManager {
     this.users.unshift(adminUser);
     await this.saveState();
     return adminUser;
+  }
+
+  findBlockedIpEntry(ip) {
+    const clean = String(ip || '').trim();
+    if (!clean) return null;
+    return this.blockedIps.find((b) => b.ip === clean) || null;
+  }
+
+  isIpBlocked(ip) {
+    const entry = this.findBlockedIpEntry(ip);
+    if (!entry) return false;
+    entry.hits = (entry.hits || 0) + 1;
+    entry.lastBlockedAt = new Date().toISOString();
+    return true;
+  }
+
+  upsertBlockedIpRecord(cleanIp, reason) {
+    const existing = this.findBlockedIpEntry(cleanIp);
+    const nowIso = new Date().toISOString();
+    if (existing) {
+      existing.reason = reason || existing.reason;
+      existing.hits = (existing.hits || 1) + 1;
+      existing.lastBlockedAt = nowIso;
+      return existing;
+    }
+    const created = {
+      ip: cleanIp,
+      reason: String(reason || 'Bloqueio de segurança'),
+      blockedAt: nowIso,
+      lastBlockedAt: nowIso,
+      hits: 1,
+      isTailscale: isTailscaleCgnatIp(cleanIp)
+    };
+    this.blockedIps.unshift(created);
+    return created;
+  }
+
+  async blockIp(ip, reason = 'Bloqueio manual') {
+    const cleanIp = String(ip || '').trim();
+    if (isProtectedSystemIp(cleanIp, this.networkConfig.vpsTailscaleIp)) {
+      throw new Error('Este endereço IP é protegido pelo sistema.');
+    }
+    const entry = this.upsertBlockedIpRecord(cleanIp, reason);
+    this.sessions = this.sessions.filter((s) => s.ip !== cleanIp);
+    this.appendAccessLog({
+      username: 'IPS',
+      event: 'IP_BLOCKED',
+      ip: cleanIp,
+      isTailscale: entry.isTailscale,
+      detail: entry.reason
+    });
+    await this.saveState();
+    return entry;
+  }
+
+  async autoBanIpIfExternal(ip, reason) {
+    const cleanIp = String(ip || '').trim();
+    if (isProtectedSystemIp(cleanIp, this.networkConfig.vpsTailscaleIp)) return null;
+    return this.blockIp(cleanIp, reason);
+  }
+
+  async unblockIp(ip) {
+    const cleanIp = String(ip || '').trim();
+    this.blockedIps = this.blockedIps.filter((b) => b.ip !== cleanIp);
+    this.httpRateWindows.delete(cleanIp);
+    this.appendAccessLog({
+      username: 'IPS',
+      event: 'IP_UNBLOCKED',
+      ip: cleanIp,
+      isTailscale: isTailscaleCgnatIp(cleanIp),
+      detail: 'IP removido da lista de bloqueio'
+    });
+    await this.saveState();
+    return { unblocked: true, ip: cleanIp };
+  }
+
+  recordHttpRateHit(ip) {
+    const now = Date.now();
+    const prev = this.httpRateWindows.get(ip);
+    if (!prev || now - prev.windowStart > HTTP_WINDOW_MS) {
+      const fresh = { count: 1, windowStart: now };
+      this.httpRateWindows.set(ip, fresh);
+      return fresh.count;
+    }
+    prev.count += 1;
+    return prev.count;
+  }
+
+  async inspectRequestSecurity(ip, pathname) {
+    const cleanIp = String(ip || '127.0.0.1').trim();
+    if (this.isIpBlocked(cleanIp)) {
+      return { allowed: false, status: 403, error: 'Conexão bloqueada.' };
+    }
+    if (isExploitProbePath(pathname)) {
+      await this.autoBanIpIfExternal(cleanIp, `Scanner bloqueado (${pathname})`);
+      return { allowed: false, status: 403, error: 'Conexão bloqueada.' };
+    }
+    const reqCount = this.recordHttpRateHit(cleanIp);
+    if (reqCount > AUTOBAN_HTTP_REQ_PER_MIN) {
+      await this.autoBanIpIfExternal(cleanIp, 'Anomalia de tráfego (Anti-DDoS)');
+      return { allowed: false, status: 403, error: 'Conexão bloqueada.' };
+    }
+    if (reqCount > MAX_HTTP_REQ_PER_MIN && !isProtectedSystemIp(cleanIp, this.networkConfig.vpsTailscaleIp)) {
+      return { allowed: false, status: 429, error: 'Limite de requisições excedido.' };
+    }
+    return { allowed: true };
   }
 
   isLockedOut(rateKey) {
@@ -304,6 +489,7 @@ class AuthManager {
       record.lockedUntil = now + LOCKOUT_DURATION_MS;
     }
     this.failedAttempts.set(rateKey, record);
+    return record.count;
   }
 
   appendAccessLog(entry) {
@@ -319,6 +505,7 @@ class AuthManager {
 
   matchesUserLoginName(user, normalized) {
     if (user.username.toLowerCase() === normalized) return true;
+    if (user.email && user.email.toLowerCase() === normalized) return true;
     return user.role === 'admin' && normalized === 'kalopsia';
   }
 
@@ -343,7 +530,7 @@ class AuthManager {
   }
 
   async logFailedLogin(rateKey, username, ip, requireAdmin) {
-    this.recordFailedAttempt(rateKey);
+    const failCount = this.recordFailedAttempt(rateKey);
     this.appendAccessLog({
       username: String(username || 'unknown'),
       event: 'LOGIN_FAILED',
@@ -351,29 +538,42 @@ class AuthManager {
       isTailscale: isTailscaleCgnatIp(ip),
       detail: requireAdmin ? 'Acesso recusado (Sistema)' : 'Conta ou senha incorreta'
     });
-    await this.saveState();
+    if (failCount >= AUTOBAN_FAILED_ATTEMPTS) {
+      await this.autoBanIpIfExternal(ip, 'Múltiplas falhas de autenticação');
+    } else {
+      await this.saveState();
+    }
     return { error: 'Conta ou senha incorreta.', status: 401 };
   }
 
+  async handleLockoutResponse(username, ip) {
+    this.appendAccessLog({
+      username: String(username || 'unknown'),
+      event: 'SECURITY_LOCKOUT',
+      ip,
+      isTailscale: isTailscaleCgnatIp(ip),
+      detail: 'Limite de tentativas excedido'
+    });
+    await this.saveState();
+    return { error: 'Muitas tentativas. Aguarde alguns minutos.', status: 429 };
+  }
+
   async authenticate({ username, password, ip, requireAdmin = false }) {
+    if (this.isIpBlocked(ip)) {
+      return { error: 'Conexão bloqueada.', status: 403 };
+    }
     const rateKey = `${ip}:${String(username || '').toLowerCase()}`;
     if (this.isLockedOut(rateKey)) {
-      this.appendAccessLog({
-        username: String(username || 'unknown'),
-        event: 'SECURITY_LOCKOUT',
-        ip,
-        isTailscale: isTailscaleCgnatIp(ip),
-        detail: 'Limite de tentativas excedido'
-      });
-      await this.saveState();
-      return { error: 'Muitas tentativas. Aguarde alguns minutos.', status: 429 };
+      return this.handleLockoutResponse(username, ip);
     }
 
     const user = this.findUserByCredentials(username, password);
     if (!this.isAuthorizedForRole(user, requireAdmin)) {
       return this.logFailedLogin(rateKey, username, ip, requireAdmin);
     }
-
+    if (user.status === 'pending') {
+      return { error: 'Conta aguardando aprovação.', status: 403 };
+    }
     if (!this.passesNetworkPolicy(user, ip)) {
       return { error: 'Conexão não autorizada.', status: 403 };
     }
@@ -426,14 +626,20 @@ class AuthManager {
     return this.sessions.find((s) => s.tokenHash === tokenHash && s.expiresAt > Date.now()) || null;
   }
 
+  isActiveApprovedUser(user) {
+    if (!user || user.disabled) return false;
+    return user.status !== 'pending';
+  }
+
   getSessionFromRequest(req) {
+    const ip = extractClientIp(req);
+    if (this.isIpBlocked(ip)) return null;
+
     const session = this.findActiveSession(extractRequestToken(req));
     if (!session) return null;
 
-    const user = this.users.find((u) => u.id === session.userId && !u.disabled);
-    if (!user) return null;
-
-    const ip = extractClientIp(req);
+    const user = this.users.find((u) => u.id === session.userId);
+    if (!this.isActiveApprovedUser(user)) return null;
     if (!this.passesNetworkPolicy(user, ip)) return null;
 
     return { user: toPublicUser(user), rawUser: user, session, ip };
@@ -447,15 +653,103 @@ class AuthManager {
     await this.saveState();
   }
 
-  async createUserAccount({ username, displayName, password, role = 'player', tailscaleIp = '' }) {
-    const cleanUsername = sanitizeUsername(username);
+  async registerPendingUser({ email, password, displayName = '', ip = '127.0.0.1' }) {
+    if (this.isIpBlocked(ip)) {
+      throw new Error('Conexão bloqueada.');
+    }
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    validatePendingRegistrationInput(cleanEmail, password, this.users);
+
+    const cleanUsername = deriveUniqueUsernameFromEmail(cleanEmail, this.users);
+    const cleanDisplay = String(displayName || '').trim() || cleanUsername;
+    const pendingUser = {
+      id: crypto.randomUUID(),
+      username: cleanUsername,
+      email: cleanEmail,
+      displayName: cleanDisplay,
+      role: 'player',
+      status: 'pending',
+      passwordHash: hashPassword(password),
+      tailscaleIp: isTailscaleCgnatIp(ip) ? ip : '',
+      registrationIp: ip,
+      disabled: false,
+      createdAt: new Date().toISOString(),
+      lastLoginAt: null,
+      lastIp: ip,
+      gamesPlayedCount: 0,
+      lastPlayedGame: null
+    };
+
+    this.users.push(pendingUser);
+    this.appendAccessLog({
+      userId: pendingUser.id,
+      username: pendingUser.username,
+      displayName: pendingUser.displayName,
+      event: 'ACCOUNT_PENDING',
+      ip,
+      isTailscale: isTailscaleCgnatIp(ip),
+      detail: `Solicitou acesso (${cleanEmail})`
+    });
+    await this.saveState();
+    return toPublicUser(pendingUser);
+  }
+
+  async approveUserAccount(userId, patch = {}) {
+    const user = this.users.find((u) => u.id === userId);
+    if (!user) throw new Error('Conta não encontrada.');
+    user.status = 'active';
+    user.disabled = false;
+    if (patch.tailscaleIp !== undefined) {
+      user.tailscaleIp = String(patch.tailscaleIp).trim();
+    }
+    this.appendAccessLog({
+      userId: user.id,
+      username: user.username,
+      displayName: user.displayName,
+      event: 'ACCOUNT_APPROVED',
+      ip: user.registrationIp || 'admin',
+      isTailscale: Boolean(user.tailscaleIp),
+      detail: `Cadastro aprovado (${user.email || user.username})`
+    });
+    await this.saveState();
+    return toPublicUser(user);
+  }
+
+  async rejectUserAccount(userId, { banIp = false } = {}) {
+    const user = this.users.find((u) => u.id === userId);
+    if (!user) throw new Error('Conta não encontrada.');
+    if (user.role === 'admin') throw new Error('Não permitido.');
+
+    const targetIp = user.registrationIp;
+    this.users = this.users.filter((u) => u.id !== userId);
+    this.sessions = this.sessions.filter((s) => s.userId !== userId);
+    this.appendAccessLog({
+      username: user.username,
+      displayName: user.displayName,
+      event: 'ACCOUNT_REJECTED',
+      ip: targetIp || 'admin',
+      isTailscale: isTailscaleCgnatIp(targetIp),
+      detail: `Solicitação recusada (${user.email || user.username})`
+    });
+    if (banIp && targetIp) {
+      await this.autoBanIpIfExternal(targetIp, `Cadastro recusado (@${user.username})`);
+    } else {
+      await this.saveState();
+    }
+    return { rejected: true, id: userId };
+  }
+
+  async createUserAccount({ username, email = '', displayName, password, role = 'player', tailscaleIp = '' }) {
+    const cleanUsername = sanitizeUsername(username || String(email).split('@')[0]);
     validateNewAccountFields(cleanUsername, password, this.users);
 
     const newUser = {
       id: crypto.randomUUID(),
       username: cleanUsername,
+      email: String(email || '').trim().toLowerCase(),
       displayName: String(displayName || cleanUsername).trim(),
       role: role === 'admin' ? 'admin' : 'player',
+      status: 'active',
       passwordHash: hashPassword(password),
       tailscaleIp: String(tailscaleIp || '').trim(),
       disabled: false,
@@ -474,7 +768,7 @@ class AuthManager {
       event: 'ACCOUNT_CREATED',
       ip: 'admin',
       isTailscale: Boolean(newUser.tailscaleIp),
-      detail: `Conta criada pelo Admin (${newUser.role})`
+      detail: `Conta criada (${newUser.role})`
     });
     await this.saveState();
     return toPublicUser(newUser);
@@ -501,9 +795,7 @@ class AuthManager {
   }
 
   async changeAdminPassword(adminId, newPassword) {
-    if (!newPassword || String(newPassword).length < 8) {
-      throw new Error('A nova senha de Admin deve ter no mínimo 8 caracteres.');
-    }
+    assertMinPasswordLength(newPassword, 8, 'A nova senha deve ter no mínimo 8 caracteres.');
     const admin = this.users.find((u) => u.id === adminId);
     if (!admin) throw new Error('Admin não encontrado.');
     admin.passwordHash = hashPassword(newPassword);
@@ -514,6 +806,9 @@ class AuthManager {
   async updateNetworkConfig(patch) {
     if (patch.tailscaleLockdown !== undefined) {
       this.networkConfig.tailscaleLockdown = Boolean(patch.tailscaleLockdown);
+    }
+    if (patch.allowSelfRegistration !== undefined) {
+      this.networkConfig.allowSelfRegistration = Boolean(patch.allowSelfRegistration);
     }
     if (patch.tailnetDomain !== undefined) {
       this.networkConfig.tailnetDomain = String(patch.tailnetDomain).trim();
@@ -585,15 +880,19 @@ class AuthManager {
   }
 
   getDashboardOverview(onlinePlayers = [], activeRooms = []) {
-    const usersWithHistory = this.users.map((u) => this.enrichUserWithTelemetry(u, onlinePlayers));
+    const enriched = this.users.map((u) => this.enrichUserWithTelemetry(u, onlinePlayers));
+    const pendingUsers = enriched.filter((u) => u.status === 'pending');
+    const activeUsers = enriched.filter((u) => u.status !== 'pending');
     const hourlyActivity = buildHourlyBuckets(this.accessLogs, this.gameSessions);
     const topGames = buildTopGamesRanking(this.gameSessions);
-    const isIncident = (l) => ['LOGIN_FAILED', 'SECURITY_LOCKOUT'].includes(l.event);
+    const isIncident = (l) => ['LOGIN_FAILED', 'SECURITY_LOCKOUT', 'IP_BLOCKED'].includes(l.event);
 
     return {
       networkConfig: this.networkConfig,
       summary: {
-        totalUsers: this.users.length,
+        totalUsers: activeUsers.length,
+        pendingApprovalsCount: pendingUsers.length,
+        blockedIpsCount: this.blockedIps.length,
         onlineCount: onlinePlayers.length,
         activeRoomsCount: activeRooms.length,
         totalMatchesPlayed: this.gameSessions.length,
@@ -603,7 +902,9 @@ class AuthManager {
       hourlyActivity,
       topGames,
       telemetry: { hourlySeries: hourlyActivity, topGames },
-      users: usersWithHistory,
+      users: activeUsers,
+      pendingUsers,
+      blockedIps: this.blockedIps,
       onlinePlayers,
       activeRooms,
       recentGameSessions: this.gameSessions.slice(0, 30),
@@ -617,5 +918,6 @@ module.exports = {
   hashPassword,
   verifyPassword,
   extractClientIp,
-  isTailscaleCgnatIp
+  isTailscaleCgnatIp,
+  isExploitProbePath
 };

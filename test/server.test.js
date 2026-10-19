@@ -314,3 +314,59 @@ test('Supersymmetry Admin Telemetry & Direct Invites: pushes zero-link WebSocket
   }
 });
 
+test('Supersymmetry IPS & Self-Registration Approval Queue: holds new sign-ups pending until Admin approval and auto-bans exploit scanners', async () => {
+  const { baseUrl, cleanup } = await startTestApp();
+  try {
+    const regRes = await fetch(`${baseUrl}/api/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Forwarded-For': '100.90.10.5' },
+      body: JSON.stringify({
+        displayName: 'Pedro P3',
+        email: 'pedro@kalopsia.me',
+        password: 'PedroSecretPassword!'
+      })
+    });
+    assert.equal(regRes.status, 201);
+    const regBody = await regRes.json();
+    assert.equal(regBody.pending, true);
+    assert.equal(regBody.user.status, 'pending');
+
+    const preApproveLogin = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'pedro@kalopsia.me', password: 'PedroSecretPassword!' })
+    });
+    assert.equal(preApproveLogin.status, 403);
+    const preBody = await preApproveLogin.json();
+    assert.equal(preBody.error, 'Conta aguardando aprovação.');
+
+    const adminCookie = await loginAsMasterAdmin(baseUrl);
+    const approveRes = await fetch(`${baseUrl}/api/admin/users/${regBody.user.id}/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: adminCookie },
+      body: JSON.stringify({ tailscaleIp: '100.90.10.5' })
+    });
+    assert.equal(approveRes.status, 200);
+
+    const postApproveLogin = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'pedro@kalopsia.me', password: 'PedroSecretPassword!' })
+    });
+    assert.equal(postApproveLogin.status, 200);
+
+    const exploitProbe = await fetch(`${baseUrl}/.env`, {
+      headers: { 'X-Forwarded-For': '198.51.100.77' }
+    });
+    assert.equal(exploitProbe.status, 403);
+
+    const subsequentFromAttacker = await fetch(`${baseUrl}/api/deck`, {
+      headers: { 'X-Forwarded-For': '198.51.100.77' }
+    });
+    assert.equal(subsequentFromAttacker.status, 403);
+  } finally {
+    await cleanup();
+  }
+});
+
+

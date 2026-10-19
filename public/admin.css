@@ -269,10 +269,11 @@ body {
 
 .btn-ghost-sm,
 .btn-danger-sm,
-.btn-invite-direct {
+.btn-invite-direct,
+.btn-approve-sm {
   padding: 0.44rem 0.88rem;
   border-radius: 4px;
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -282,6 +283,7 @@ body {
   background: rgba(255, 255, 255, 0.05);
   color: #ffffff;
   transition: all 0.16s ease;
+  white-space: nowrap;
 }
 
 .btn-ghost-sm:hover {
@@ -295,12 +297,14 @@ body {
   color: #f3a69c;
 }
 
+.btn-approve-sm,
 .btn-invite-direct {
   background: #f4f4f6;
   color: #06070a;
   border-color: #ffffff;
 }
 
+.btn-approve-sm:hover,
 .btn-invite-direct:hover {
   background: #ffffff;
 }
@@ -367,7 +371,57 @@ body {
   color: var(--text-muted);
 }
 
-/* Panels & Charts */
+/* Approval Queue & Panels */
+.approval-queue-panel {
+  border-left: 3px solid var(--reflektor-gold);
+}
+
+.inline-switch-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.pending-approvals-list,
+.blocked-ips-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.pending-user-card,
+.blocked-ip-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.85rem 1rem;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.pending-user-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.pending-ts-input {
+  width: 155px;
+  padding: 0.42rem 0.65rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(6, 7, 10, 0.85);
+  color: #ffffff;
+  font-size: 0.78rem;
+}
+
 .charts-grid {
   display: grid;
   grid-template-columns: 1.45fr 1fr;
@@ -668,7 +722,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
-  max-height: 260px;
+  max-height: 320px;
   overflow-y: auto;
 }
 
@@ -681,6 +735,12 @@ body {
   border-radius: 4px;
   background: rgba(0, 0, 0, 0.35);
   font-size: 0.74rem;
+}
+
+.audit-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .audit-event {

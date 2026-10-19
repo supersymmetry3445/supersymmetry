@@ -116,6 +116,102 @@ async function sendDirectAdminInvite(targetPeerId, targetUserId) {
   return res.ok;
 }
 
+function renderPendingApprovals(pendingUsers) {
+  const mount = document.getElementById('pendingApprovalsMount');
+  if (!mount) return;
+
+  if (!pendingUsers || pendingUsers.length === 0) {
+    mount.innerHTML = `<div class="player-activity-sub">Nenhuma solicitação aguardando aprovação.</div>`;
+    return;
+  }
+
+  mount.innerHTML = '';
+  pendingUsers.forEach((u) => {
+    const card = document.createElement('div');
+    card.className = 'pending-user-card';
+    card.innerHTML = `
+      <div>
+        <strong>${escapeHtml(u.displayName)}</strong>
+        <span class="player-activity-sub">(${escapeHtml(u.email || u.username)})</span>
+        <div class="player-activity-sub">
+          Origem: <code>${escapeHtml(u.registrationIp || '—')}</code> · Solicitação em ${escapeHtml(formatShortTime(u.createdAt))}
+        </div>
+      </div>
+      <div class="pending-user-actions">
+        <input type="text" class="pending-ts-input" placeholder="IP Tailscale (opcional)" value="${escapeHtml(u.tailscaleIp || '')}" />
+        <button type="button" class="btn-approve-sm" data-act="approve">Aprovar</button>
+        <button type="button" class="btn-ghost-sm" data-act="reject">Recusar</button>
+        <button type="button" class="btn-danger-sm" data-act="ban">Recusar e Banir IP</button>
+      </div>
+    `;
+
+    const tsInput = card.querySelector('.pending-ts-input');
+    card.querySelector('[data-act="approve"]').addEventListener('click', async () => {
+      await fetch(`/api/admin/users/${encodeURIComponent(u.id)}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tailscaleIp: tsInput.value.trim() })
+      });
+      loadAdminOverview();
+    });
+
+    card.querySelector('[data-act="reject"]').addEventListener('click', async () => {
+      await fetch(`/api/admin/users/${encodeURIComponent(u.id)}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ banIp: false })
+      });
+      loadAdminOverview();
+    });
+
+    card.querySelector('[data-act="ban"]').addEventListener('click', async () => {
+      await fetch(`/api/admin/users/${encodeURIComponent(u.id)}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ banIp: true })
+      });
+      loadAdminOverview();
+    });
+
+    mount.appendChild(card);
+  });
+}
+
+function renderBlockedIpsList(blockedIps) {
+  const mount = document.getElementById('blockedIpsMount');
+  if (!mount) return;
+
+  if (!blockedIps || blockedIps.length === 0) {
+    mount.innerHTML = `<div class="player-activity-sub">Nenhum endereço IP bloqueado no momento.</div>`;
+    return;
+  }
+
+  mount.innerHTML = '';
+  blockedIps.forEach((b) => {
+    const row = document.createElement('div');
+    row.className = 'blocked-ip-card';
+    row.innerHTML = `
+      <div>
+        <code>${escapeHtml(b.ip)}</code>
+        <span class="player-activity-sub"> — ${escapeHtml(b.reason)}</span>
+        <div class="player-activity-sub">${b.hits || 1} bloqueio(s) · Desde ${escapeHtml(formatShortTime(b.blockedAt))}</div>
+      </div>
+      <button type="button" class="btn-ghost-sm">Desbloquear</button>
+    `;
+
+    row.querySelector('button').addEventListener('click', async () => {
+      await fetch('/api/admin/unblock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ip: b.ip })
+      });
+      loadAdminOverview();
+    });
+
+    mount.appendChild(row);
+  });
+}
+
 function renderOnlinePlayersList(onlinePlayers) {
   const mount = document.getElementById('onlinePlayersMount');
   if (!mount) return;
@@ -177,10 +273,11 @@ function renderUsersTable(users) {
         : `<span class="player-activity-sub">${escapeHtml(u.lastPlayedGame || 'Sem registros')}</span>`;
 
     const canDelete = u.role !== 'admin';
+    const identitySub = u.email ? `${u.email} · @${u.username}` : `@${u.username}`;
     tr.innerHTML = `
       <td>
         <strong>${escapeHtml(u.displayName)}</strong>
-        <div class="player-activity-sub">@${escapeHtml(u.username)} · ${u.role.toUpperCase()}</div>
+        <div class="player-activity-sub">${escapeHtml(identitySub)}</div>
       </td>
       <td>${statusHtml}</td>
       <td><code>${escapeHtml(u.tailscaleIp || 'Padrão')}</code></td>
@@ -203,49 +300,93 @@ function renderUsersTable(users) {
   });
 }
 
+function isBlockableAuditIp(ip) {
+  if (!ip) return false;
+  return !['admin', 'console', '127.0.0.1', '::1', '100.65.233.79'].includes(ip);
+}
+
 function renderAuditLogs(logs) {
   const mount = document.getElementById('accessLogsMount');
   if (!mount) return;
-  mount.innerHTML = (logs || [])
-    .slice(0, 20)
-    .map((l) => {
-      const isDanger = l.event === 'LOGIN_FAILED' || l.event === 'SECURITY_LOCKOUT';
-      return `
-        <div class="audit-item">
-          <div>
-            <span class="audit-event ${isDanger ? 'danger' : ''}">${escapeHtml(l.event)}</span>
-            <span> — ${escapeHtml(l.displayName || l.username || 'Sistema')}: ${escapeHtml(l.detail || '')}</span>
-          </div>
-          <span class="player-activity-sub">${escapeHtml(l.ip || '')} · ${escapeHtml(formatShortTime(l.timestamp))}</span>
-        </div>
-      `;
-    })
-    .join('');
+  mount.innerHTML = '';
+
+  (logs || []).slice(0, 22).forEach((l) => {
+    const isDanger = ['LOGIN_FAILED', 'SECURITY_LOCKOUT', 'IP_BLOCKED'].includes(l.event);
+    const row = document.createElement('div');
+    row.className = 'audit-item';
+    const canBan = isBlockableAuditIp(l.ip) && l.event !== 'IP_BLOCKED';
+
+    row.innerHTML = `
+      <div>
+        <span class="audit-event ${isDanger ? 'danger' : ''}">${escapeHtml(l.event)}</span>
+        <span> — ${escapeHtml(l.displayName || l.username || 'Sistema')}: ${escapeHtml(l.detail || '')}</span>
+      </div>
+      <div class="audit-right">
+        <span class="player-activity-sub">${escapeHtml(l.ip || '')} · ${escapeHtml(formatShortTime(l.timestamp))}</span>
+        ${canBan ? `<button type="button" class="btn-danger-sm" data-ban-ip="${escapeHtml(l.ip)}">Banir IP</button>` : ''}
+      </div>
+    `;
+
+    const banBtn = row.querySelector('[data-ban-ip]');
+    if (banBtn) {
+      banBtn.addEventListener('click', async () => {
+        await fetch('/api/admin/blocklist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ip: l.ip, reason: `Auditoria (${l.event})` })
+        });
+        loadAdminOverview();
+      });
+    }
+    mount.appendChild(row);
+  });
 }
 
 function updateKpiCounts(summary) {
   document.getElementById('kpiOnlineCount').textContent = String(summary.onlineCount);
   document.getElementById('kpiRoomsCount').textContent = `${summary.activeRoomsCount} salas em andamento`;
+  document.getElementById('kpiPendingCount').textContent = String(summary.pendingApprovalsCount);
+  document.getElementById('kpiUsersCount').textContent = `${summary.totalUsers} contas ativas`;
   document.getElementById('kpiMatchesCount').textContent = String(summary.totalMatchesPlayed);
-  document.getElementById('kpiUsersCount').textContent = String(summary.totalUsers);
   document.getElementById('kpiLoginsCount').textContent = `${summary.totalLogins} sessões autenticadas`;
-  document.getElementById('kpiBlockedCount').textContent = String(summary.blockedIntrusions);
+  document.getElementById('kpiBlockedCount').textContent = `${summary.blockedIpsCount} IPs (${summary.blockedIntrusions} eventos)`;
+}
+
+function updateGpuStatusLabel(gpu) {
+  const gpuOnline = Boolean(gpu && gpu.online);
+  document.getElementById('kpiGpuStatus').textContent = gpuOnline
+    ? `RTX 3050: Ativa (${gpu.gpuModel})`
+    : 'RTX 3050: Standby';
+}
+
+function updateNetworkSwitches(netCfg) {
+  if (!netCfg) return;
+  const strictMesh = Boolean(netCfg.tailscaleLockdown);
+  const toggle = document.getElementById('tailscaleLockdownToggle');
+  if (toggle) toggle.checked = strictMesh;
+
+  const selfRegToggle = document.getElementById('allowSelfRegToggle');
+  if (selfRegToggle) selfRegToggle.checked = Boolean(netCfg.allowSelfRegistration);
+
+  document.getElementById('adminTailscaleBadge').textContent = strictMesh
+    ? 'Tailscale: Restrito (100.64.0.0/10)'
+    : 'Tailscale: Ativo (100.65.233.79)';
 }
 
 function updateSummaryCards(data) {
   if (data.summary) updateKpiCounts(data.summary);
+  updateGpuStatusLabel(data.gpu);
+  updateNetworkSwitches(data.networkConfig);
+}
 
-  const gpuOnline = Boolean(data.gpu && data.gpu.online);
-  document.getElementById('kpiGpuStatus').textContent = gpuOnline
-    ? `RTX 3050: Ativa (${data.gpu.gpuModel})`
-    : 'RTX 3050: Standby';
-
-  const strictMesh = Boolean(data.networkConfig && data.networkConfig.tailscaleLockdown);
-  const toggle = document.getElementById('tailscaleLockdownToggle');
-  if (toggle) toggle.checked = strictMesh;
-  document.getElementById('adminTailscaleBadge').textContent = strictMesh
-    ? 'Tailscale: Restrito (100.64.0.0/10)'
-    : 'Tailscale: Ativo (100.65.233.79)';
+function renderDashboardSections(data) {
+  renderPendingApprovals(data.pendingUsers);
+  renderBlockedIpsList(data.blockedIps);
+  renderActivitySvgChart(data.hourlyActivity);
+  renderTopGamesBars(data.topGames);
+  renderOnlinePlayersList(data.onlinePlayers);
+  renderUsersTable(data.users);
+  renderAuditLogs(data.accessLogs);
 }
 
 async function loadAdminOverview() {
@@ -261,11 +402,7 @@ async function loadAdminOverview() {
   document.getElementById('adminDashboardScreen').classList.remove('hidden');
 
   updateSummaryCards(data);
-  renderActivitySvgChart(data.hourlyActivity || []);
-  renderTopGamesBars(data.topGames || []);
-  renderOnlinePlayersList(data.onlinePlayers || []);
-  renderUsersTable(data.users || []);
-  renderAuditLogs(data.accessLogs || []);
+  renderDashboardSections(data);
   return true;
 }
 
@@ -309,6 +446,15 @@ function bindLoginAndSecurityEvents() {
   document.getElementById('refreshDashboardBtn').addEventListener('click', loadAdminOverview);
 }
 
+async function submitNetworkPatch(patch) {
+  await fetch('/api/admin/network', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(patch)
+  });
+  await loadAdminOverview();
+}
+
 function bindManagementForms() {
   document.getElementById('createUserForm').addEventListener('submit', async (ev) => {
     ev.preventDefault();
@@ -338,12 +484,24 @@ function bindManagementForms() {
     await loadAdminOverview();
   });
 
-  document.getElementById('tailscaleLockdownToggle').addEventListener('change', async (ev) => {
-    await fetch('/api/admin/network', {
+  document.getElementById('tailscaleLockdownToggle').addEventListener('change', (ev) => {
+    submitNetworkPatch({ tailscaleLockdown: ev.target.checked });
+  });
+
+  document.getElementById('allowSelfRegToggle').addEventListener('change', (ev) => {
+    submitNetworkPatch({ allowSelfRegistration: ev.target.checked });
+  });
+
+  document.getElementById('manualBlockIpForm').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const ip = document.getElementById('blockIpInput').value.trim();
+    const reason = document.getElementById('blockReasonInput').value.trim() || 'Bloqueio manual';
+    await fetch('/api/admin/blocklist', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tailscaleLockdown: ev.target.checked })
+      body: JSON.stringify({ ip, reason })
     });
+    ev.target.reset();
     await loadAdminOverview();
   });
 

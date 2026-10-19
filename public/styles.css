@@ -1896,5 +1896,46 @@ dialog.console-dialog::backdrop {
   color: #94a3b8;
 }
 
+.auth-gate-notice {
+  padding: 0.65rem 0.85rem;
+  border-radius: 4px;
+  background: rgba(114, 180, 212, 0.14);
+  border: 1px solid rgba(114, 180, 212, 0.38);
+  color: #bae6fd;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.auth-gate-notice.is-error {
+  background: rgba(225, 91, 75, 0.14);
+  border-color: rgba(225, 91, 75, 0.42);
+  color: #f3a69c;
+}
+
+.auth-mode-switch {
+  display: flex;
+  justify-content: center;
+  padding-top: 0.35rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.auth-switch-btn {
+  background: transparent;
+  border: none;
+  color: var(--reflektor-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  transition: color 0.16s ease;
+}
+
+.auth-switch-btn:hover {
+  color: var(--reflektor-silver);
+}
+
+
 
 

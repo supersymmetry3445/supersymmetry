@@ -84,6 +84,52 @@
     }
   }
 
+  async function handleConsoleSignupSubmit(ev) {
+    ev.preventDefault();
+    const fbEl = document.getElementById('consoleSignupFeedback');
+    const submitBtn = document.getElementById('consoleSignupSubmitBtn');
+    const displayName = document.getElementById('signupDisplayName').value.trim();
+    const email = document.getElementById('signupEmail').value.trim();
+    const password = document.getElementById('new-password').value;
+
+    fbEl.classList.add('hidden');
+    fbEl.classList.remove('is-error');
+    submitBtn.disabled = true;
+
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ displayName, email, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Não foi possível criar a conta.');
+      fbEl.textContent = data.message || 'Cadastro enviado. Aguardando aprovação.';
+      fbEl.classList.remove('hidden');
+      ev.target.reset();
+    } catch (err) {
+      fbEl.textContent = err.message;
+      fbEl.classList.add('is-error');
+      fbEl.classList.remove('hidden');
+    } finally {
+      submitBtn.disabled = false;
+    }
+  }
+
+  function switchAuthMode() {
+    const loginForm = document.getElementById('consoleLoginForm');
+    const signupForm = document.getElementById('consoleSignupForm');
+    const switchBtn = document.getElementById('switchAuthModeBtn');
+    const heading = document.getElementById('consoleAuthHeading');
+    if (!loginForm || !signupForm) return;
+
+    const showingSignup = signupForm.classList.contains('hidden');
+    loginForm.classList.toggle('hidden', showingSignup);
+    signupForm.classList.toggle('hidden', !showingSignup);
+    if (heading) heading.textContent = showingSignup ? 'Criar conta' : 'Iniciar sessão';
+    if (switchBtn) switchBtn.textContent = showingSignup ? 'Iniciar sessão' : 'Criar conta';
+  }
+
   async function handleConsoleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
     applyAuthenticatedUser(null);
@@ -244,10 +290,10 @@
     }
   }
 
-  function togglePasswordVisibility() {
-    const input = document.getElementById('current-password');
-    const isPassword = input.type === 'password';
-    input.type = isPassword ? 'text' : 'password';
+  function toggleInputVisibilityById(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    input.type = input.type === 'password' ? 'text' : 'password';
   }
 
   function addClickListener(id, fn) {
@@ -259,10 +305,15 @@
     const loginForm = document.getElementById('consoleLoginForm');
     if (loginForm) loginForm.addEventListener('submit', handleConsoleLoginSubmit);
 
+    const signupForm = document.getElementById('consoleSignupForm');
+    if (signupForm) signupForm.addEventListener('submit', handleConsoleSignupSubmit);
+
     const uploadForm = document.getElementById('uploadRomForm');
     if (uploadForm) uploadForm.addEventListener('submit', handleRomUploadSubmit);
 
-    addClickListener('toggleConsolePwdBtn', togglePasswordVisibility);
+    addClickListener('toggleConsolePwdBtn', () => toggleInputVisibilityById('current-password'));
+    addClickListener('toggleSignupPwdBtn', () => toggleInputVisibilityById('new-password'));
+    addClickListener('switchAuthModeBtn', switchAuthMode);
     addClickListener('logoutConsoleBtn', handleConsoleLogout);
     addClickListener('dismissInviteToastBtn', () => {
       document.getElementById('partyInviteToast').classList.add('hidden');
@@ -276,23 +327,14 @@
   window.SupersymmetrySocial = {
     myPeerId: null,
     init(hooks) {
-      socialState.appState = hooks.state;
-      socialState.joinRoomById = hooks.joinRoomById;
-      socialState.launchGameItem = hooks.launchGameItem;
-      socialState.onPlayChime = hooks.onPlayChime;
-      socialState.fetchDeckLibrary = hooks.fetchDeckLibrary;
+      Object.assign(socialState, hooks);
       bindAuthAndInviteEvents();
-      checkConsoleSession();
+      return checkConsoleSession();
     },
-    setPeerId(peerId) {
-      this.myPeerId = peerId;
-      renderOnlineFriends(socialState.onlinePlayers);
-    },
-    updateOnlinePlayers(players) {
-      renderOnlineFriends(players);
-    },
-    receiveDirectInvite(invite) {
-      showDirectInviteToast(invite);
+    renderOnlineFriends,
+    showDirectInviteToast,
+    setMyPeerId(id) {
+      this.myPeerId = id;
     }
   };
 })();

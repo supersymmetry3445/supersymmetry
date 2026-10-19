@@ -106,23 +106,38 @@
           <span class="kpi-foot" id="kpiRoomsCount">0 salas em andamento</span>
         </article>
 
+        <article class="kpi-card kpi-users">
+          <span class="kpi-label">AGUARDANDO APROVAÇÃO</span>
+          <strong class="kpi-value" id="kpiPendingCount">0</strong>
+          <span class="kpi-foot" id="kpiUsersCount">1 conta ativa</span>
+        </article>
+
         <article class="kpi-card kpi-matches">
           <span class="kpi-label">PARTIDAS INICIADAS</span>
           <strong class="kpi-value" id="kpiMatchesCount">0</strong>
-          <span class="kpi-foot">Total acumulado no console</span>
-        </article>
-
-        <article class="kpi-card kpi-users">
-          <span class="kpi-label">CONTAS REGISTRADAS</span>
-          <strong class="kpi-value" id="kpiUsersCount">1</strong>
           <span class="kpi-foot" id="kpiLoginsCount">0 sessões autenticadas</span>
         </article>
 
         <article class="kpi-card kpi-shield">
-          <span class="kpi-label">TENTATIVAS RECUSADAS</span>
+          <span class="kpi-label">IPS BLOQUEADOS / INCIDENTES</span>
           <strong class="kpi-value" id="kpiBlockedCount">0</strong>
           <span class="kpi-foot" id="kpiGpuStatus">RTX 3050: Standby</span>
         </article>
+      </section>
+
+      <!-- Row 1.5: Pending Account Approvals Queue -->
+      <section class="panel-card approval-queue-panel" id="pendingApprovalsSection" aria-label="Fila de Aprovação de Contas">
+        <div class="panel-header">
+          <div>
+            <span class="panel-eyebrow">INSCRIÇÕES ONLINE · APROVAÇÃO DE ACESSO</span>
+            <h2>Solicitações de Cadastro Pendentes</h2>
+          </div>
+          <label class="inline-switch-label">
+            <span>Permitir auto-cadastro no console</span>
+            <input type="checkbox" id="allowSelfRegToggle" class="admin-switch" checked />
+          </label>
+        </div>
+        <div class="pending-approvals-list" id="pendingApprovalsMount"></div>
       </section>
 
       <!-- Row 2: Telemetry Charts (24h Activity + Top Games) -->
@@ -146,14 +161,14 @@
           <div class="panel-header">
             <div>
               <span class="panel-eyebrow">HISTÓRICO POR TÍTULO</span>
-              <h2>Jogos MaisExecutados</h2>
+              <h2>Jogos Mais Executados</h2>
             </div>
           </div>
           <div class="top-games-bars" id="topGamesMount"></div>
         </article>
       </section>
 
-      <!-- Row 3: Live Online Players + Account Provisioning -->
+      <!-- Row 3: Live Online Players + Manual Account Provisioning -->
       <section class="social-admin-grid">
         <article class="panel-card">
           <div class="panel-header">
@@ -187,8 +202,8 @@
         <article class="panel-card">
           <div class="panel-header">
             <div>
-              <span class="panel-eyebrow">GERENCIAMENTO DE CONTAS</span>
-              <h2>Nova Conta de Jogador</h2>
+              <span class="panel-eyebrow">CADASTRO DIRETO (OPCIONAL)</span>
+              <h2>Criar Conta Manualmente</h2>
             </div>
           </div>
 
@@ -229,7 +244,7 @@
         <div class="panel-header">
           <div>
             <span class="panel-eyebrow">DIRETÓRIO DE CONTAS</span>
-            <h2>Contas &amp; Histórico de Jogos</h2>
+            <h2>Contas Aprovadas &amp; Histórico de Jogos</h2>
           </div>
         </div>
 
@@ -251,13 +266,13 @@
         </div>
       </section>
 
-      <!-- Row 5: Network Policy & Event Log -->
+      <!-- Row 5: IPS Blocklist, Tailscale Moderation & Event Log -->
       <section class="bottom-security-grid">
         <article class="panel-card">
           <div class="panel-header">
             <div>
-              <span class="panel-eyebrow">REDE · TAILSCALE (100.64.0.0/10)</span>
-              <h2>Política de Rede &amp; Credencial</h2>
+              <span class="panel-eyebrow">PREVENÇÃO DE INTRUSÃO (IPS) &amp; TAILSCALE</span>
+              <h2>Bloqueio de Invasores &amp; Malha Segura</h2>
             </div>
           </div>
 
@@ -275,6 +290,19 @@
               <code>tailscale up --accept-routes</code>
             </div>
           </div>
+
+          <form id="manualBlockIpForm" class="admin-form">
+            <div class="field-group">
+              <label for="blockIpInput">Bloquear Endereço IP (Firewall da Aplicação)</label>
+              <div class="inline-input-btn">
+                <input type="text" id="blockIpInput" placeholder="ex: 185.220.101.4" required />
+                <input type="text" id="blockReasonInput" placeholder="Motivo (opcional)" />
+                <button type="submit" class="btn-danger-sm">Bloquear IP</button>
+              </div>
+            </div>
+          </form>
+
+          <div class="blocked-ips-list" id="blockedIpsMount"></div>
 
           <hr class="panel-divider" />
 
@@ -300,7 +328,7 @@
           <div class="panel-header">
             <div>
               <span class="panel-eyebrow">REGISTRO DO SISTEMA</span>
-              <h2>Eventos Recentes</h2>
+              <h2>Eventos Recentes &amp; Auditoria</h2>
             </div>
           </div>
           <div class="audit-log-list" id="accessLogsMount"></div>

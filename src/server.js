@@ -23,11 +23,18 @@ const MIME_TYPES = {
   '.webmanifest': 'application/manifest+json; charset=utf-8'
 };
 
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'SAMEORIGIN',
+  'Referrer-Policy': 'strict-origin-when-cross-origin'
+};
+
 function sendJsonResponse(res, statusCode, payload, extraHeaders = {}) {
   const body = JSON.stringify(payload);
   res.writeHead(statusCode, {
     'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': 'no-store',
+    ...SECURITY_HEADERS,
     ...extraHeaders
   });
   res.end(body);
@@ -58,7 +65,7 @@ function readRequestBuffer(req, maxBytes = 1024 * 1024 * 64) {
 }
 
 async function readJsonBody(req) {
-  const buf = await readRequestBuffer(req, 1024 * 1024);
+  const buf = await readRequestBuffer(req, 32 * 1024);
   if (buf.length === 0) return {};
   return JSON.parse(buf.toString('utf8'));
 }
@@ -78,6 +85,7 @@ function buildHealthPayload(storage, rooms, gpuBridge, auth) {
     activeRooms: rooms.listPublicRooms().length,
     connectedPeers: rooms.clients.size,
     tailscaleLockdown: auth.networkConfig.tailscaleLockdown,
+    blockedIpsCount: auth.blockedIps.length,
     gpuNode: gpuBridge.getStatus()
   };
 }
@@ -120,6 +128,29 @@ async function handlePostAuthLogin(req, res, auth) {
   );
 }
 
+async function handlePostAuthRegister(req, res, auth) {
+  if (!auth.networkConfig.allowSelfRegistration) {
+    return sendJsonResponse(res, 403, { error: 'Inscrições desativadas no momento.' });
+  }
+  try {
+    const ip = extractClientIp(req);
+    const body = await readJsonBody(req);
+    const user = await auth.registerPendingUser({
+      email: body.email,
+      password: body.password,
+      displayName: body.displayName,
+      ip
+    });
+    return sendJsonResponse(res, 201, {
+      pending: true,
+      user,
+      message: 'Cadastro enviado. Aguardando aprovação.'
+    });
+  } catch (err) {
+    return sendJsonResponse(res, 400, { error: err.message || 'Não foi possível concluir o cadastro.' });
+  }
+}
+
 async function handlePostAuthLogout(req, res, auth) {
   await auth.revokeSession(req);
   return sendJsonResponse(
@@ -134,11 +165,29 @@ async function handleAuthRoute(req, res, pathname, auth) {
   const key = `${req.method || 'GET'} ${pathname}`;
   if (key === 'GET /api/auth/me') return handleGetAuthMe(req, res, auth);
   if (key === 'POST /api/auth/login') return handlePostAuthLogin(req, res, auth);
+  if (key === 'POST /api/auth/register') return handlePostAuthRegister(req, res, auth);
   if (key === 'POST /api/auth/logout') return handlePostAuthLogout(req, res, auth);
   return sendJsonResponse(res, 404, { error: 'Auth route not found' });
 }
 
-async function handleAdminUserItemRoute(req, res, userId, auth) {
+async function handleAdminUserAction(req, res, { userId, subAction, auth }) {
+  if (subAction === 'approve' && req.method === 'POST') {
+    const body = await readJsonBody(req);
+    const user = await auth.approveUserAccount(userId, body);
+    return sendJsonResponse(res, 200, { user });
+  }
+  if (subAction === 'reject' && req.method === 'POST') {
+    const body = await readJsonBody(req);
+    const result = await auth.rejectUserAccount(userId, body);
+    return sendJsonResponse(res, 200, result);
+  }
+  return sendJsonResponse(res, 405, { error: 'Method not allowed' });
+}
+
+async function handleAdminUserItemRoute(req, res, { userId, subAction, auth }) {
+  if (subAction) {
+    return handleAdminUserAction(req, res, { userId, subAction, auth });
+  }
   if (req.method === 'PATCH') {
     const body = await readJsonBody(req);
     const updated = await auth.updateUserAccount(userId, body);
@@ -182,6 +231,16 @@ function buildAdminHandlers(sess, deps) {
       const networkConfig = await auth.updateNetworkConfig(await readJsonBody(req));
       return sendJsonResponse(res, 200, { networkConfig });
     },
+    'POST /api/admin/blocklist': async (req, res) => {
+      const body = await readJsonBody(req);
+      const entry = await auth.blockIp(body.ip, body.reason);
+      return sendJsonResponse(res, 201, { blocked: entry });
+    },
+    'POST /api/admin/unblock': async (req, res) => {
+      const body = await readJsonBody(req);
+      const result = await auth.unblockIp(body.ip);
+      return sendJsonResponse(res, 200, result);
+    },
     'POST /api/admin/invite': async (req, res) => {
       const body = await readJsonBody(req);
       const sender = { name: sess.user.displayName, username: sess.user.username };
@@ -198,7 +257,7 @@ function isMasterAdminSession(sess) {
 async function handleAdminRoute(req, res, pathname, deps) {
   const sess = deps.auth.getSessionFromRequest(req);
   if (!isMasterAdminSession(sess)) {
-    return sendJsonResponse(res, 401, { error: 'Acesso exclusivo ao Administrador Master.' });
+    return sendJsonResponse(res, 401, { error: 'Não autorizado.' });
   }
 
   const routeKey = `${req.method || 'GET'} ${pathname}`;
@@ -207,9 +266,13 @@ async function handleAdminRoute(req, res, pathname, deps) {
     return handlers[routeKey](req, res);
   }
 
-  const userMatch = pathname.match(/^\/api\/admin\/users\/([a-f0-9-]+)$/i);
+  const userMatch = pathname.match(/^\/api\/admin\/users\/([a-f0-9-]+)(?:\/(approve|reject))?$/i);
   if (userMatch) {
-    return handleAdminUserItemRoute(req, res, userMatch[1], deps.auth);
+    return handleAdminUserItemRoute(req, res, {
+      userId: userMatch[1],
+      subAction: userMatch[2],
+      auth: deps.auth
+    });
   }
 
   return sendJsonResponse(res, 404, { error: 'Admin route not found' });
@@ -282,6 +345,12 @@ function createApiRouter(deps) {
   };
 }
 
+function configureHttpHardeningTimeouts(server) {
+  server.headersTimeout = 15000;
+  server.requestTimeout = 30000;
+  server.keepAliveTimeout = 5000;
+}
+
 function createSupersymmetryApp(options = {}) {
   const dataDir = options.dataDir || process.env.DATA_DIR || path.join(__dirname, '..', 'data');
   const publicDir = options.publicDir || path.join(__dirname, '..', 'public');
@@ -307,6 +376,13 @@ function createSupersymmetryApp(options = {}) {
   const server = http.createServer(async (req, res) => {
     try {
       const parsedUrl = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+      if (parsedUrl.pathname !== '/api/health') {
+        const sec = await auth.inspectRequestSecurity(extractClientIp(req), parsedUrl.pathname);
+        if (!sec.allowed) {
+          sendJsonResponse(res, sec.status, { error: sec.error });
+          return;
+        }
+      }
       if (parsedUrl.pathname.startsWith('/api/')) {
         await handleApiRequest(req, res, parsedUrl);
         return;
@@ -317,8 +393,15 @@ function createSupersymmetryApp(options = {}) {
     }
   });
 
-  const wss = new WebSocketServer({ server, path: '/ws' });
+  configureHttpHardeningTimeouts(server);
+
+  const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 64 * 1024 });
   wss.on('connection', (ws, req) => {
+    const clientIp = extractClientIp(req);
+    if (auth.isIpBlocked(clientIp)) {
+      ws.close(1008, 'Blocked');
+      return;
+    }
     const sess = auth.getSessionFromRequest(req);
     const client = rooms.registerClient(ws, sess);
     ws.send(JSON.stringify({ type: 'gpu-updated', gpu: gpuBridge.getStatus() }));
@@ -441,7 +524,7 @@ function serveStaticFile(publicDir, requestPath, res, req) {
 
   const ext = path.extname(resolvedPath).toLowerCase();
   const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-  res.writeHead(200, { 'Content-Type': contentType });
+  res.writeHead(200, { 'Content-Type': contentType, ...SECURITY_HEADERS });
   fs.createReadStream(resolvedPath).pipe(res);
 }
 
@@ -450,7 +533,7 @@ async function startServer() {
   const app = createSupersymmetryApp();
   await app.storage.init();
   app.server.listen(port, '0.0.0.0', () => {
-    console.log(`[Supersymmetry] Console & Admin Fortress running on http://0.0.0.0:${port}`);
+    console.log(`[Supersymmetry] Console & Admin running on http://0.0.0.0:${port}`);
   });
 }
 
