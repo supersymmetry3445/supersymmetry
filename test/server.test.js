@@ -369,4 +369,84 @@ test('Supersymmetry IPS & Self-Registration Approval Queue: holds new sign-ups p
   }
 });
 
+test('Supersymmetry Always-Open System Rooms (Gartic/Fightcade style): seeds SALA-01..SALA-08, auto-elects P1 Host, joins P2, and resets without deleting on leave', async () => {
+  const { baseUrl, wsUrl, cleanup } = await startTestApp();
+  try {
+    const deckRes = await fetch(`${baseUrl}/api/deck`).then((r) => r.json());
+    assert.equal(deckRes.rooms.length, 8);
+    const sala01 = deckRes.rooms.find((r) => r.id === 'SALA-01');
+    assert.ok(sala01);
+    assert.equal(sala01.isSystemRoom, true);
+    assert.equal(sala01.status, 'open');
+    assert.equal(sala01.players.length, 0);
+
+    const p1Ws = new WebSocket(wsUrl);
+    const p2Ws = new WebSocket(wsUrl);
+
+    const waitForType = (ws, expectedType) =>
+      new Promise((resolve) => {
+        const handler = (raw) => {
+          const msg = JSON.parse(raw.toString());
+          if (msg.type === expectedType) {
+            ws.off('message', handler);
+            resolve(msg);
+          }
+        };
+        ws.on('message', handler);
+      });
+
+    await Promise.all([waitForType(p1Ws, 'welcome'), waitForType(p2Ws, 'welcome')]);
+
+    // P1 clicks "Jogar" on Super Bomberman 4 (or clicks SALA-01) -> auto-elected Host in SALA-01
+    const p1JoinedPromise = waitForType(p1Ws, 'room-joined');
+    p1Ws.send(
+      JSON.stringify({
+        type: 'create-room',
+        slug: 'super-bomberman-4',
+        gameTitle: 'Super Bomberman 4',
+        playerName: 'PlayerUm'
+      })
+    );
+    const p1Joined = await p1JoinedPromise;
+    assert.equal(p1Joined.room.id, 'SALA-01');
+    assert.equal(p1Joined.slot, 1);
+    assert.equal(p1Joined.isHost, true);
+    assert.equal(p1Joined.room.status, 'active');
+
+    // P2 joins SALA-01 -> enters Slot 2 as Guest
+    const p2JoinedPromise = waitForType(p2Ws, 'room-joined');
+    const p1PeerJoinedPromise = waitForType(p1Ws, 'peer-joined');
+    p2Ws.send(
+      JSON.stringify({
+        type: 'join-room',
+        roomId: 'SALA-01',
+        playerName: 'PlayerDois'
+      })
+    );
+    const [p2Joined, p1Notified] = await Promise.all([p2JoinedPromise, p1PeerJoinedPromise]);
+    assert.equal(p2Joined.room.id, 'SALA-01');
+    assert.equal(p2Joined.slot, 2);
+    assert.equal(p2Joined.isHost, false);
+    assert.equal(p1Notified.slot, 2);
+
+    // P1 leaves -> SALA-01 resets to 0/4 open state and is NEVER deleted
+    const roomClosedPromise = waitForType(p2Ws, 'room-closed');
+    p1Ws.send(JSON.stringify({ type: 'leave-room' }));
+    await roomClosedPromise;
+
+    const afterRoomsRes = await fetch(`${baseUrl}/api/rooms`).then((r) => r.json());
+    const resetSala01 = afterRoomsRes.rooms.find((r) => r.id === 'SALA-01');
+    assert.ok(resetSala01);
+    assert.equal(resetSala01.status, 'open');
+    assert.equal(resetSala01.players.length, 0);
+    assert.equal(resetSala01.hostName, 'Sala Aberta');
+
+    p1Ws.close();
+    p2Ws.close();
+  } finally {
+    await cleanup();
+  }
+});
+
+
 

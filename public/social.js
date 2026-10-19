@@ -324,16 +324,133 @@
     });
   }
 
+  function findRoomForGame(game, rooms) {
+    if (!game || !Array.isArray(rooms)) return null;
+    return rooms.find((r) => (r.slug && r.slug === game.slug) || r.gameTitle === game.title) || null;
+  }
+
+  function resolveHeroRoomLabels(game, rooms) {
+    const room = findRoomForGame(game, rooms);
+    if (!room) {
+      return {
+        statusLabel: game.installed ? 'Instalado' : 'Pronto',
+        ctaLabel: 'Jogar'
+      };
+    }
+    const count = room.players.length;
+    const max = room.maxPlayers || 4;
+    if (count > 0) {
+      return {
+        statusLabel: `${room.id} · ${count}/${max} na Sala`,
+        ctaLabel: `Entrar (${count}/${max})`
+      };
+    }
+    return {
+      statusLabel: `${room.id} · Aberta (0/${max})`,
+      ctaLabel: 'Jogar'
+    };
+  }
+
+  function hasJoinableActiveHost(room) {
+    if (!room) return false;
+    const max = room.maxPlayers || 4;
+    return room.players.length > 0 && room.players.length < max;
+  }
+
+  function findGameForRoom(room, games) {
+    if (!room || !Array.isArray(games)) return null;
+    return games.find((g) => (room.slug && g.slug === room.slug) || g.title === room.gameTitle) || null;
+  }
+
+  function resolveEmptyRoomGame(roomId, rooms, games) {
+    const room = Array.isArray(rooms) ? rooms.find((r) => r.id === roomId) : null;
+    if (!room || room.players.length > 0) return null;
+    return findGameForRoom(room, games);
+  }
+
+  function buildRoomSeatMetaHtml(room) {
+    const max = room.maxPlayers || 4;
+    const count = room.players.length;
+    if (count > 0) {
+      return `<span class="room-seat-pill room-seat-occupied">${escapeHtml(room.hostName)} · ${count}/${max}</span>`;
+    }
+    return `<span class="room-seat-pill">Aberta · 0/${max}</span>`;
+  }
+
+  function renderRoomsShelf(rooms, onJoinRoom) {
+    const shelf = document.getElementById('liveRoomsShelf');
+    const grid = document.getElementById('roomsGrid');
+    const badge = document.getElementById('roomsCountBadge');
+    const qamList = document.getElementById('qamRoomsList');
+    if (!grid) return;
+
+    const activeCount = rooms.filter((r) => r.players.length > 0).length;
+    badge.textContent = activeCount > 0 ? `Salas (${activeCount} ativas)` : `Salas (${rooms.length})`;
+    grid.innerHTML = '';
+    qamList.innerHTML = '';
+
+    if (rooms.length === 0) {
+      shelf.classList.add('hidden');
+      qamList.textContent = 'Nenhuma sala aberta.';
+      return;
+    }
+
+    shelf.classList.remove('hidden');
+    rooms.forEach((room) => {
+      const isOccupied = room.players.length > 0;
+      const max = room.maxPlayers || 4;
+      const card = document.createElement('div');
+      card.className = `room-banner-card ${isOccupied ? 'has-active-players' : ''}`;
+      card.innerHTML = `
+        <div class="room-card-info">
+          <div class="room-card-eyebrow">
+            <span class="tag-pill tag-system">${escapeHtml(room.id)}</span>
+            <span class="room-console-sub">${escapeHtml(room.consoleName)}</span>
+          </div>
+          <div class="room-card-title">${escapeHtml(room.gameTitle)}</div>
+          <div class="room-card-seats">${buildRoomSeatMetaHtml(room)}</div>
+        </div>
+        <button type="button" class="btn-steam-play room-join-btn">
+          ${isOccupied ? 'Entrar' : 'Jogar'}
+        </button>
+      `;
+      card.addEventListener('click', () => onJoinRoom(room.id));
+      grid.appendChild(card);
+
+      const qamBtn = document.createElement('button');
+      qamBtn.type = 'button';
+      qamBtn.className = 'qam-action-btn';
+      qamBtn.textContent = `${room.id} · ${room.gameTitle} (${room.players.length}/${max})`;
+      qamBtn.addEventListener('click', () => {
+        document.getElementById('quickAccessDialog').close();
+        onJoinRoom(room.id);
+      });
+      qamList.appendChild(qamBtn);
+    });
+  }
+
   window.SupersymmetrySocial = {
     myPeerId: null,
     init(hooks) {
       Object.assign(socialState, hooks);
+      if (hooks && hooks.state) socialState.appState = hooks.state;
       bindAuthAndInviteEvents();
       return checkConsoleSession();
     },
+    findRoomForGame,
+    resolveHeroRoomLabels,
+    hasJoinableActiveHost,
+    findGameForRoom,
+    resolveEmptyRoomGame,
+    renderRoomsShelf,
     renderOnlineFriends,
+    updateOnlinePlayers: renderOnlineFriends,
     showDirectInviteToast,
+    receiveDirectInvite: showDirectInviteToast,
     setMyPeerId(id) {
+      this.myPeerId = id;
+    },
+    setPeerId(id) {
       this.myPeerId = id;
     }
   };

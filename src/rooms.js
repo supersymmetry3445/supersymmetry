@@ -4,32 +4,118 @@ const crypto = require('node:crypto');
 
 const MAX_PLAYERS_PER_ROOM = 4;
 
+const DEFAULT_SYSTEM_ROOMS = [
+  {
+    id: 'SALA-01',
+    name: 'Sala #1 · Bomberman 4',
+    slug: 'super-bomberman-4',
+    gameTitle: 'Super Bomberman 4',
+    consoleId: 'snes',
+    consoleName: 'Super Nintendo',
+    maxPlayers: 4
+  },
+  {
+    id: 'SALA-02',
+    name: 'Sala #2 · Bomberman 5',
+    slug: 'super-bomberman-5',
+    gameTitle: 'Super Bomberman 5',
+    consoleId: 'snes',
+    consoleName: 'Super Nintendo',
+    maxPlayers: 4
+  },
+  {
+    id: 'SALA-03',
+    name: 'Sala #3 · ISS Deluxe',
+    slug: 'iss-deluxe',
+    gameTitle: 'International Superstar Soccer Deluxe',
+    consoleId: 'snes',
+    consoleName: 'Super Nintendo',
+    maxPlayers: 4
+  },
+  {
+    id: 'SALA-04',
+    name: 'Sala #4 · Mario Kart',
+    slug: 'super-mario-kart',
+    gameTitle: 'Super Mario Kart',
+    consoleId: 'snes',
+    consoleName: 'Super Nintendo',
+    maxPlayers: 2
+  },
+  {
+    id: 'SALA-05',
+    name: 'Sala #5 · Top Gear',
+    slug: 'top-gear',
+    gameTitle: 'Top Gear',
+    consoleId: 'snes',
+    consoleName: 'Super Nintendo',
+    maxPlayers: 2
+  },
+  {
+    id: 'SALA-06',
+    name: 'Sala #6 · Ultimate MK3',
+    slug: 'umk3-snes',
+    gameTitle: 'Ultimate Mortal Kombat 3',
+    consoleId: 'snes',
+    consoleName: 'Super Nintendo',
+    maxPlayers: 2
+  },
+  {
+    id: 'SALA-07',
+    name: 'Sala #7 · Street Fighter II',
+    slug: 'street-fighter-ii-turbo',
+    gameTitle: 'Street Fighter II Turbo',
+    consoleId: 'snes',
+    consoleName: 'Super Nintendo',
+    maxPlayers: 2
+  },
+  {
+    id: 'SALA-08',
+    name: 'Sala #8 · Streets of Rage 2',
+    slug: 'streets-of-rage-2',
+    gameTitle: 'Streets of Rage 2',
+    consoleId: 'segaMD',
+    consoleName: 'Mega Drive',
+    maxPlayers: 2
+  }
+];
+
 function sendJson(ws, payload) {
   if (ws && ws.readyState === 1) {
     ws.send(JSON.stringify(payload));
   }
 }
 
+function serializePlayerSlot(p, hostPeerId) {
+  return {
+    peerId: p.peerId,
+    name: p.name,
+    slot: p.slot,
+    isHost: p.peerId === hostPeerId,
+    pingMs: p.pingMs || 0
+  };
+}
+
 function serializeRoom(room) {
+  const players = Array.from(room.players.values()).map((p) =>
+    serializePlayerSlot(p, room.hostPeerId)
+  );
   return {
     id: room.id,
     name: room.name,
+    slug: room.slug || null,
+    isSystemRoom: Boolean(room.isSystemRoom),
+    maxPlayers: room.maxPlayers || MAX_PLAYERS_PER_ROOM,
+    status: players.length > 0 ? 'active' : 'open',
     consoleId: room.consoleId,
     consoleName: room.consoleName,
     romId: room.romId,
     gameTitle: room.gameTitle,
     hostPeerId: room.hostPeerId,
     hostName: room.hostName,
-    mode: room.mode || 'wasm-p2p',
-    streamUrl: room.streamUrl || null,
+    mode: room.mode,
+    streamUrl: room.streamUrl,
     createdAt: room.createdAt,
-    players: Array.from(room.players.values()).map((p) => ({
-      peerId: p.peerId,
-      name: p.name,
-      slot: p.slot,
-      isHost: p.peerId === room.hostPeerId,
-      pingMs: p.pingMs || 0
-    }))
+    players
   };
 }
 
@@ -62,7 +148,7 @@ function buildClientRecord(ws, peerId, authSession) {
   return {
     peerId,
     ...profile,
-    activity: 'Explorando Biblioteca',
+    activity: 'No Menu',
     roomId: null,
     slot: null,
     pingMs: 0,
@@ -86,24 +172,58 @@ function serializeOnlinePlayer(c) {
 }
 
 function applyGuestNameIfProvided(client, playerName) {
-  if (!playerName) return;
-  if (client.userId) return;
+  if (!playerName || client.userId) return;
   client.name = String(playerName).slice(0, 24);
 }
 
+function buildSystemRoomRecord(seed) {
+  return {
+    id: seed.id,
+    name: seed.name,
+    slug: seed.slug,
+    isSystemRoom: true,
+    maxPlayers: seed.maxPlayers,
+    consoleId: seed.consoleId,
+    consoleName: seed.consoleName,
+    romId: null,
+    gameTitle: seed.gameTitle,
+    hostPeerId: null,
+    hostName: 'Sala Aberta',
+    mode: 'wasm-p2p',
+    streamUrl: null,
+    createdAt: new Date().toISOString(),
+    players: new Map()
+  };
+}
+
+const ROOM_RECORD_DEFAULTS = {
+  slug: null,
+  maxPlayers: MAX_PLAYERS_PER_ROOM,
+  consoleId: 'snes',
+  consoleName: 'SNES',
+  romId: null,
+  gameTitle: 'Super Bomberman 4',
+  mode: 'wasm-p2p',
+  streamUrl: null
+};
+
 function buildRoomRecord(client, roomId, data) {
-  const gameTitle = String(data.gameTitle || 'Super Bomberman (4P)').slice(0, 60);
+  const merged = { ...ROOM_RECORD_DEFAULTS, ...data };
+  const gameTitle = String(merged.gameTitle).slice(0, 60);
   return {
     id: roomId,
-    name: String(data.roomName || `${client.name}'s Arcade`).slice(0, 48),
-    consoleId: data.consoleId || 'snes',
-    consoleName: data.consoleName || 'SNES',
-    romId: data.romId || null,
+    name: String(merged.roomName || `Sala · ${gameTitle}`).slice(0, 48),
+    slug: merged.slug,
+    isSystemRoom: false,
+    maxPlayers: Number(merged.maxPlayers) || MAX_PLAYERS_PER_ROOM,
+    consoleId: merged.consoleId,
+    consoleName: merged.consoleName,
+    romId: merged.romId,
     gameTitle,
     hostPeerId: client.peerId,
     hostName: client.name,
-    mode: data.mode || 'wasm-p2p',
-    streamUrl: data.streamUrl || null,
+    mode: merged.mode,
+    streamUrl: merged.streamUrl,
     createdAt: new Date().toISOString(),
     players: new Map([[client.peerId, client]])
   };
@@ -144,11 +264,24 @@ function matchesInviteTarget(client, targetPeerId, targetUserId) {
   return false;
 }
 
+function matchesRoomGame(room, data) {
+  if (data.slug && room.slug === data.slug) return true;
+  const targetTitle = String(data.gameTitle || '').trim().toLowerCase();
+  return Boolean(targetTitle && room.gameTitle.toLowerCase() === targetTitle);
+}
+
 class RoomManager {
   constructor(options = {}) {
     this.rooms = new Map();
     this.clients = new Map();
     this.onGameStarted = options.onGameStarted || null;
+    this.seedSystemRooms();
+  }
+
+  seedSystemRooms() {
+    DEFAULT_SYSTEM_ROOMS.forEach((seed) => {
+      this.rooms.set(seed.id, buildSystemRoomRecord(seed));
+    });
   }
 
   registerClient(ws, authSession = null) {
@@ -211,7 +344,8 @@ class RoomManager {
         usedSlots.add(player.slot);
       }
     }
-    for (let slot = 1; slot <= MAX_PLAYERS_PER_ROOM; slot += 1) {
+    const maxSlots = room.maxPlayers || MAX_PLAYERS_PER_ROOM;
+    for (let slot = 1; slot <= maxSlots; slot += 1) {
       if (!usedSlots.has(slot)) {
         return slot;
       }
@@ -232,10 +366,57 @@ class RoomManager {
     });
   }
 
+  findMatchingSystemRoom(data) {
+    for (const room of this.rooms.values()) {
+      if (room.isSystemRoom && matchesRoomGame(room, data)) {
+        if (room.players.size < (room.maxPlayers || MAX_PLAYERS_PER_ROOM)) {
+          return room;
+        }
+      }
+    }
+    return null;
+  }
+
+  assignFirstPlayerAsHost(room, client, data) {
+    room.hostPeerId = client.peerId;
+    room.hostName = client.name;
+    if (data.romId) room.romId = data.romId;
+    if (data.mode) room.mode = data.mode;
+    if (data.streamUrl !== undefined) room.streamUrl = data.streamUrl;
+
+    client.slot = 1;
+    client.roomId = room.id;
+    client.activity = `Jogando ${room.gameTitle}`;
+    room.players.set(client.peerId, client);
+
+    this.notifyGameStarted(client, room);
+    sendJson(client.ws, {
+      type: 'room-joined',
+      room: serializeRoom(room),
+      slot: 1,
+      isHost: true
+    });
+    this.broadcastLobbyState();
+  }
+
   createRoom(client, data) {
     this.leaveCurrentRoom(client);
-    const roomId = String(data.roomId || crypto.randomUUID().slice(0, 6)).toUpperCase();
     applyGuestNameIfProvided(client, data.playerName);
+
+    if (!data.roomId) {
+      const sysRoom = this.findMatchingSystemRoom(data);
+      if (sysRoom) {
+        this.enterExistingRoom(client, sysRoom, data);
+        return;
+      }
+    }
+
+    const roomId = String(data.roomId || crypto.randomUUID().slice(0, 6)).toUpperCase();
+    const existing = this.rooms.get(roomId);
+    if (existing && existing.isSystemRoom) {
+      this.enterExistingRoom(client, existing, data);
+      return;
+    }
 
     const room = buildRoomRecord(client, roomId, data);
     client.slot = 1;
@@ -248,21 +429,16 @@ class RoomManager {
     this.broadcastLobbyState();
   }
 
-  joinRoom(client, data) {
-    const roomId = String(data.roomId || '').toUpperCase();
-    const room = this.rooms.get(roomId);
-    if (!room) {
-      sendJson(client.ws, { type: 'error', message: `Sala ${roomId} não encontrada.` });
+  enterExistingRoom(client, room, data = {}) {
+    if (room.players.size === 0 || !room.hostPeerId) {
+      this.assignFirstPlayerAsHost(room, client, data);
       return;
     }
-
-    this.leaveCurrentRoom(client);
-    applyGuestNameIfProvided(client, data.playerName);
 
     const assignedSlot = this.findAvailableSlot(room);
     client.slot = assignedSlot;
     client.roomId = room.id;
-    client.activity = `Na Sala #${room.id} (${room.gameTitle})`;
+    client.activity = `Na ${room.name} (${room.gameTitle})`;
     room.players.set(client.peerId, client);
 
     const serialized = serializeRoom(room);
@@ -288,16 +464,38 @@ class RoomManager {
     this.broadcastLobbyState();
   }
 
-  closeEntireRoom(room) {
+  joinRoom(client, data) {
+    const roomId = String(data.roomId || '').toUpperCase();
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      sendJson(client.ws, { type: 'error', message: `Sala ${roomId} não encontrada.` });
+      return;
+    }
+
+    this.leaveCurrentRoom(client);
+    applyGuestNameIfProvided(client, data.playerName);
+    this.enterExistingRoom(client, room, data);
+  }
+
+  resetOrDeleteRoom(room) {
     this.broadcastToRoom(room, {
       type: 'room-closed',
       roomId: room.id,
-      reason: 'O Host encerrou a sessão do console.'
+      reason: 'Sessão encerrada.'
     });
     for (const peer of room.players.values()) {
       peer.roomId = null;
       peer.slot = null;
-      peer.activity = 'Explorando Biblioteca';
+      peer.activity = 'No Menu';
+    }
+    room.players.clear();
+
+    if (room.isSystemRoom) {
+      room.hostPeerId = null;
+      room.hostName = 'Sala Aberta';
+      room.romId = null;
+      room.streamUrl = null;
+      return;
     }
     this.rooms.delete(room.id);
   }
@@ -307,12 +505,12 @@ class RoomManager {
     const room = this.rooms.get(client.roomId);
     client.roomId = null;
     client.slot = null;
-    client.activity = 'Explorando Biblioteca';
+    client.activity = 'No Menu';
     if (!room) return;
 
     room.players.delete(client.peerId);
     if (room.players.size === 0 || room.hostPeerId === client.peerId) {
-      this.closeEntireRoom(room);
+      this.resetOrDeleteRoom(room);
     } else {
       this.broadcastToRoom(room, {
         type: 'peer-left',
@@ -415,5 +613,6 @@ class RoomManager {
 }
 
 module.exports = {
-  RoomManager
+  RoomManager,
+  DEFAULT_SYSTEM_ROOMS
 };

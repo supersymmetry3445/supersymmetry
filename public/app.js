@@ -310,12 +310,18 @@ function updateHeroSpotlight() {
   const game = state.filteredGames[state.focusedIndex];
   if (!game) return;
 
+  const social = window.SupersymmetrySocial;
+  const labels = social
+    ? social.resolveHeroRoomLabels(game, state.rooms)
+    : { statusLabel: game.installed ? 'Instalado' : 'Pronto', ctaLabel: 'Jogar' };
+
   document.documentElement.style.setProperty('--game-accent', game.accent);
   document.getElementById('heroYearTag').textContent = game.year;
   document.getElementById('heroConsoleTag').textContent = game.consoleName;
   document.getElementById('heroPlayersTag').textContent =
     game.maxPlayers > 1 ? `Até ${game.maxPlayers} Jogadores` : '1 Jogador';
-  document.getElementById('heroStatusTag').textContent = game.installed ? 'Instalado' : 'Pronto';
+  document.getElementById('heroStatusTag').textContent = labels.statusLabel;
+  document.getElementById('heroPlayBtnText').textContent = labels.ctaLabel;
   document.getElementById('heroTitle').textContent = game.title;
   document.getElementById('heroSubtitle').textContent = game.genre;
   document.getElementById('heroSynopsis').textContent = game.synopsis;
@@ -347,15 +353,26 @@ async function ensureCatalogRomOnServer(game) {
 
 async function launchGameItem(game) {
   playConsoleTone(880, 0.12, 0.045);
-  const playBtnText = document.getElementById('heroPlayBtnText');
-  const prevLabel = playBtnText.textContent;
-  playBtnText.textContent = 'INICIANDO...';
+  const social = window.SupersymmetrySocial;
+  const matchedRoom = social ? social.findRoomForGame(game, state.rooms) : null;
+  if (social && social.hasJoinableActiveHost(matchedRoom)) {
+    sendWs({
+      type: 'join-room',
+      roomId: matchedRoom.id,
+      playerName: getPlayerName()
+    });
+    return;
+  }
+
+  document.getElementById('heroPlayBtnText').textContent = 'INICIANDO...';
 
   try {
     const resolved = !game.id && game.slug ? await ensureCatalogRomOnServer(game) : game;
     mountEmulatorJs(resolved.core, `/api/roms/${resolved.id}/file`, resolved.title);
     sendWs({
       type: 'create-room',
+      roomId: matchedRoom ? matchedRoom.id : undefined,
+      slug: game.slug || resolved.slug,
       playerName: getPlayerName(),
       consoleId: resolved.consoleId,
       consoleName: resolved.consoleName,
@@ -364,7 +381,7 @@ async function launchGameItem(game) {
       mode: 'wasm-p2p'
     });
   } finally {
-    playBtnText.textContent = prevLabel;
+    updateHeroSpotlight();
   }
 }
 
@@ -389,46 +406,9 @@ function launchLocalFileAsHost(file) {
 }
 
 function renderRoomsShelf() {
-  const shelf = document.getElementById('liveRoomsShelf');
-  const grid = document.getElementById('roomsGrid');
-  const badge = document.getElementById('roomsCountBadge');
-  const qamList = document.getElementById('qamRoomsList');
-
-  badge.textContent = `Salas (${state.rooms.length})`;
-  grid.innerHTML = '';
-  qamList.innerHTML = '';
-
-  if (state.rooms.length === 0) {
-    shelf.classList.add('hidden');
-    qamList.textContent = 'Nenhuma sala aberta.';
-    return;
+  if (window.SupersymmetrySocial) {
+    window.SupersymmetrySocial.renderRoomsShelf(state.rooms, joinRoomById);
   }
-
-  shelf.classList.remove('hidden');
-  state.rooms.forEach((room) => {
-    const card = document.createElement('div');
-    card.className = 'room-banner-card';
-    card.innerHTML = `
-      <div>
-        <div class="tag-pill tag-system" style="display:inline-block;margin-bottom:3px">${escapeHtml(room.consoleName)}</div>
-        <div style="font-weight:800;font-size:0.88rem">${escapeHtml(room.gameTitle)}</div>
-        <div style="font-size:0.72rem;color:var(--steam-muted)">Host: ${escapeHtml(room.hostName)} · ${room.players.length}/4</div>
-      </div>
-      <button type="button" class="btn-steam-play" style="padding:0.45rem 0.9rem;font-size:0.78rem">Entrar</button>
-    `;
-    card.addEventListener('click', () => joinRoomById(room.id));
-    grid.appendChild(card);
-
-    const qamBtn = document.createElement('button');
-    qamBtn.type = 'button';
-    qamBtn.className = 'qam-action-btn';
-    qamBtn.textContent = `${room.gameTitle} (${room.players.length}/4) — Entrar`;
-    qamBtn.addEventListener('click', () => {
-      document.getElementById('quickAccessDialog').close();
-      joinRoomById(room.id);
-    });
-    qamList.appendChild(qamBtn);
-  });
 }
 
 function connectWebSocket() {
@@ -450,6 +430,7 @@ const WS_HANDLERS = {
     state.peerId = msg.peerId;
     state.rooms = msg.rooms || [];
     renderRoomsShelf();
+    updateHeroSpotlight();
     if (window.SupersymmetrySocial) {
       window.SupersymmetrySocial.setPeerId(msg.peerId);
       window.SupersymmetrySocial.updateOnlinePlayers(msg.onlinePlayers || []);
@@ -458,6 +439,7 @@ const WS_HANDLERS = {
   'rooms-updated': (msg) => {
     state.rooms = msg.rooms || [];
     renderRoomsShelf();
+    updateHeroSpotlight();
   },
   'presence-updated': (msg) => {
     if (window.SupersymmetrySocial) {
@@ -791,7 +773,13 @@ function sendPadFrameToRoom(buttons, axes) {
   sendWs(frame);
 }
 
-function joinRoomById(roomId) {
+async function joinRoomById(roomId) {
+  const social = window.SupersymmetrySocial;
+  const emptyGame = social ? social.resolveEmptyRoomGame(roomId, state.rooms, state.games) : null;
+  if (emptyGame) {
+    await launchGameItem(emptyGame);
+    return;
+  }
   sendWs({
     type: 'join-room',
     roomId,
