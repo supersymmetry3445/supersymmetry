@@ -12,6 +12,7 @@ async function startTestApp() {
   const tmpDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'supersymmetry-test-'));
   const app = createSupersymmetryApp({ dataDir: tmpDir, gpuToken: 'test-gpu-secret' });
   await app.storage.init();
+  await app.auth.init();
 
   await new Promise((resolve) => app.server.listen(0, '127.0.0.1', resolve));
   const { port } = app.server.address();
@@ -201,3 +202,109 @@ test('Supersymmetry WebSocket Rooms: Host creates 4-player room, friend joins Sl
     await cleanup();
   }
 });
+
+async function loginAsMasterAdmin(baseUrl) {
+  const adminLogin = await fetch(`${baseUrl}/api/auth/login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Forwarded-For': '100.65.233.79'
+    },
+    body: JSON.stringify({ username: 'admin', password: '@derN3445', requireAdmin: true })
+  });
+  assert.equal(adminLogin.status, 200);
+  const cookieHeader = adminLogin.headers.get('set-cookie');
+  assert.ok(cookieHeader && cookieHeader.includes('ss_session='));
+  return cookieHeader.split(';')[0];
+}
+
+test('Supersymmetry Zero-Trust Admin Fortress: authenticates @derN3445, creates player accounts, and serves admin.superssimetry.kalopsia.me', async () => {
+  const { baseUrl, cleanup } = await startTestApp();
+  try {
+    const adminHostHtml = await fetch(`${baseUrl}/`, {
+      headers: { 'X-Forwarded-Host': 'admin.superssimetry.kalopsia.me' }
+    }).then((r) => r.text());
+    assert.ok(adminHostHtml.includes('Supersymmetry Admin Fortress'));
+    assert.ok(adminHostHtml.includes('adminLoginForm'));
+
+    const unauthOverview = await fetch(`${baseUrl}/api/admin/overview`);
+    assert.equal(unauthOverview.status, 401);
+
+    const wrongLogin = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'admin', password: 'wrong-password', requireAdmin: true })
+    });
+    assert.equal(wrongLogin.status, 401);
+
+    const sessionCookie = await loginAsMasterAdmin(baseUrl);
+    const createPlayerRes = await fetch(`${baseUrl}/api/admin/users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: sessionCookie },
+      body: JSON.stringify({
+        username: 'lucas',
+        displayName: 'Lucas P2',
+        password: 'LucasSecret99!',
+        tailscaleIp: '100.88.10.12'
+      })
+    });
+    assert.equal(createPlayerRes.status, 201);
+    const { user: lucasUser } = await createPlayerRes.json();
+    assert.equal(lucasUser.username, 'lucas');
+    assert.equal(lucasUser.tailscaleIp, '100.88.10.12');
+  } finally {
+    await cleanup();
+  }
+});
+
+test('Supersymmetry Admin Telemetry & Direct Invites: pushes zero-link WebSocket invites and aggregates 24h game telemetry', async () => {
+  const { baseUrl, wsUrl, cleanup } = await startTestApp();
+  try {
+    const sessionCookie = await loginAsMasterAdmin(baseUrl);
+    const playerWs = new WebSocket(wsUrl);
+    const waitForType = (ws, expectedType) =>
+      new Promise((resolve) => {
+        const handler = (raw) => {
+          const msg = JSON.parse(raw.toString());
+          if (msg.type === expectedType) {
+            ws.off('message', handler);
+            resolve(msg);
+          }
+        };
+        ws.on('message', handler);
+      });
+
+    const welcomeMsg = await waitForType(playerWs, 'welcome');
+    const invitePromise = waitForType(playerWs, 'direct-invite');
+
+    const inviteRes = await fetch(`${baseUrl}/api/admin/invite`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: sessionCookie },
+      body: JSON.stringify({
+        targetPeerId: welcomeMsg.peerId,
+        gameSlug: 'super-bomberman-4',
+        gameTitle: 'Super Bomberman 4',
+        consoleName: 'Super Nintendo'
+      })
+    });
+    assert.equal(inviteRes.status, 200);
+    const inviteBody = await inviteRes.json();
+    assert.equal(inviteBody.deliveredCount, 1);
+
+    const pushedInvite = await invitePromise;
+    assert.equal(pushedInvite.invite.gameTitle, 'Super Bomberman 4');
+
+    const overviewRes = await fetch(`${baseUrl}/api/admin/overview`, {
+      headers: { Cookie: sessionCookie, 'X-Forwarded-For': '100.65.233.79' }
+    });
+    assert.equal(overviewRes.status, 200);
+    const overview = await overviewRes.json();
+    assert.equal(overview.network.isTailscaleMesh, true);
+    assert.equal(overview.telemetry.hourlySeries.length, 12);
+
+    playerWs.close();
+  } finally {
+    await cleanup();
+  }
+});
+

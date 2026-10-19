@@ -299,8 +299,21 @@
       </div>
 
       <div class="qam-section">
-        <label class="qam-label" for="playerNameInput">Perfil do Jogador</label>
-        <input id="playerNameInput" class="qam-input" type="text" maxlength="20" value="Player 1" />
+        <div class="qam-profile-row">
+          <div>
+            <label class="qam-label" for="playerNameInput">Perfil do Jogador</label>
+            <input id="playerNameInput" class="qam-input" type="text" maxlength="20" value="Player 1" />
+          </div>
+          <button type="button" class="hud-btn" id="logoutConsoleBtn" title="Bloquear Console">🔒 Sair</button>
+        </div>
+        <div class="qam-network-pill" id="tailscaleStatusPill">🌐 Rede verificada</div>
+      </div>
+
+      <div class="qam-section">
+        <div class="qam-label">Amigos Online · Convite Direto (Zero Link)</div>
+        <div id="onlineFriendsList" class="qam-rooms-list">
+          Nenhum outro jogador online no momento.
+        </div>
       </div>
 
       <div class="qam-section">
@@ -359,6 +372,83 @@
     </form>
   </dialog>
 
+  <!-- Floating Real-Time Direct Party Invite Toast (Zero Links Needed!) -->
+  <aside id="partyInviteToast" class="party-invite-toast hidden" role="alert" aria-live="assertive">
+    <div class="invite-toast-glow"></div>
+    <div class="invite-toast-header">
+      <span class="invite-badge">⚡ CONVITE DIRETO PARA JOGAR</span>
+      <button type="button" class="invite-dismiss-btn" id="dismissInviteToastBtn" aria-label="Recusar">✕</button>
+    </div>
+    <div class="invite-toast-title" id="inviteToastTitle">Super Bomberman 4</div>
+    <div class="invite-toast-sub" id="inviteToastSub">Kalopsia chamou você para entrar agora!</div>
+    <div class="invite-toast-actions">
+      <button type="button" class="btn-netflix-play invite-accept-btn" id="acceptInviteToastBtn">
+        <span>▶ Entrar na Partida</span>
+        <span class="glyph glyph-a">A</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Zero-Trust Console Lock Gate (Requires Account Created by Admin) -->
+  <section id="consoleAuthGate" class="console-auth-gate hidden" aria-label="Autenticação do Console">
+    <div class="auth-gate-card">
+      <div class="auth-gate-brand">
+        <span class="netflix-n">N</span>
+        <div>
+          <div class="auth-gate-eyebrow">REDE PRIVADA · TAILSCALE &amp; ZERO-TRUST</div>
+          <h2 class="auth-gate-title">Supersymmetry Console</h2>
+        </div>
+      </div>
+
+      <p class="auth-gate-desc">
+        Este console é fechado para convidados autorizados. Entre com o usuário e senha criados pelo Administrador.
+      </p>
+
+      <form id="consoleLoginForm" class="auth-gate-form" action="/api/auth/login" method="post">
+        <div class="auth-field">
+          <label for="console-username">Usuário</label>
+          <input
+            id="console-username"
+            name="username"
+            type="text"
+            autocomplete="username"
+            required
+            placeholder="Seu usuário do console"
+          />
+        </div>
+
+        <div class="auth-field">
+          <label for="current-password">Senha de Acesso</label>
+          <div class="auth-pwd-wrap">
+            <input
+              id="current-password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              enterkeyhint="done"
+              required
+              placeholder="••••••••••••"
+            />
+            <button type="button" class="auth-pwd-toggle" id="toggleConsolePwdBtn" aria-label="Mostrar senha">👁</button>
+          </div>
+        </div>
+
+        <div id="consoleAuthError" class="auth-gate-error hidden" role="alert"></div>
+
+        <button type="submit" class="btn-netflix-play auth-submit-btn" id="consoleLoginSubmitBtn">
+          <span>Desbloquear Console</span>
+          <span class="glyph glyph-a">A</span>
+        </button>
+      </form>
+
+      <div class="auth-gate-footer">
+        <span id="authGateNetworkBadge">🛡️ Criptografia scrypt + Sessão HttpOnly</span>
+        <a href="https://admin.superssimetry.kalopsia.me" class="auth-admin-link">Painel Admin →</a>
+      </div>
+    </div>
+  </section>
+
+  <script src="/social.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#07080c" />
+  <title>Supersymmetry Admin Fortress</title>
+  <link rel="stylesheet" href="/admin.css" />
+</head>
+<body>
+  <div class="admin-ambient-bg"></div>
+
+  <!-- ========================================================================
+       FORTRESS SIGN-IN GATE (OWASP scrypt N=65536 + Brute-Force Shield)
+       ======================================================================== -->
+  <section class="fortress-gate" id="adminLoginScreen" aria-labelledby="fortressTitle">
+    <div class="fortress-card">
+      <div class="fortress-header">
+        <div class="fortress-brand">
+          <span class="netflix-n">N</span>
+          <span>SUPERSYMMETRY // ADMIN FORTRESS</span>
+        </div>
+        <h1 id="fortressTitle">Acesso Exclusivo do Proprietário</h1>
+        <p class="fortress-subtitle">
+          Protegido por derivação criptográfica <code>scrypt (N=65536)</code>, comparação em tempo constante e escudo anti-força-bruta.
+        </p>
+      </div>
+
+      <form id="adminLoginForm" class="fortress-form">
+        <div class="field-group">
+          <label for="adminUsernameInput">Usuário Master</label>
+          <input
+            type="text"
+            id="adminUsernameInput"
+            name="username"
+            autocomplete="username"
+            autocapitalize="none"
+            autocorrect="off"
+            spellcheck="false"
+            enterkeyhint="next"
+            value="admin"
+            required
+          />
+        </div>
+
+        <div class="field-group">
+          <div class="field-label-row">
+            <label for="current-password">Senha Criptográfica</label>
+            <button type="button" class="toggle-pwd-btn" id="toggleAdminPwdBtn">Mostrar</button>
+          </div>
+          <input
+            type="password"
+            id="current-password"
+            name="password"
+            autocomplete="current-password"
+            enterkeyhint="done"
+            placeholder="Digite sua senha master..."
+            required
+          />
+        </div>
+
+        <div class="fortress-error hidden" id="adminLoginError" role="alert"></div>
+
+        <button type="submit" class="btn-fortress-primary" id="adminLoginSubmitBtn">
+          🔒 Desbloquear Command Center
+        </button>
+      </form>
+
+      <div class="fortress-security-pills">
+        <span class="sec-pill">🛡️ OWASP scrypt 64B</span>
+        <span class="sec-pill">⚡ Tailscale 100.64.0.0/10 Ready</span>
+        <span class="sec-pill">🚫 Lockout 5 Tentativas</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================================================
+       ADMIN COMMAND CENTER DASHBOARD
+       ======================================================================== -->
+  <div class="admin-shell hidden" id="adminDashboardScreen">
+    <header class="admin-topbar">
+      <div class="topbar-brand">
+        <span class="netflix-n">N</span>
+        <div>
+          <div class="brand-title">SUPERSYMMETRY COMMAND CENTER</div>
+          <div class="brand-sub" id="adminNetworkSubtitle">Zero-Trust Console OS &amp; Tailscale Mesh</div>
+        </div>
+      </div>
+
+      <div class="topbar-actions">
+        <span class="mesh-badge" id="adminTailscaleBadge">🌐 Tailscale: Verificando...</span>
+        <a href="https://superssymetry.kalopsia.me" class="btn-ghost-sm">🎮 Abrir Console</a>
+        <button type="button" class="btn-ghost-sm" id="refreshDashboardBtn">↻ Atualizar</button>
+        <button type="button" class="btn-danger-sm" id="adminLogoutBtn">Sair</button>
+      </div>
+    </header>
+
+    <main class="admin-main">
+      <!-- Row 1: Gamer HUD KPI Cards -->
+      <section class="kpi-grid" aria-label="Indicadores em Tempo Real">
+        <article class="kpi-card kpi-online">
+          <span class="kpi-label">JOGADORES LOGADOS AGORA</span>
+          <strong class="kpi-value" id="kpiOnlineCount">0</strong>
+          <span class="kpi-foot" id="kpiRoomsCount">0 salas ativas no momento</span>
+        </article>
+
+        <article class="kpi-card kpi-matches">
+          <span class="kpi-label">PARTIDAS INICIADAS</span>
+          <strong class="kpi-value" id="kpiMatchesCount">0</strong>
+          <span class="kpi-foot">Sessões registradas no histórico</span>
+        </article>
+
+        <article class="kpi-card kpi-users">
+          <span class="kpi-label">CONTAS AUTORIZADAS</span>
+          <strong class="kpi-value" id="kpiUsersCount">1</strong>
+          <span class="kpi-foot" id="kpiLoginsCount">0 acessos autenticados</span>
+        </article>
+
+        <article class="kpi-card kpi-shield">
+          <span class="kpi-label">INTRUSÕES BLOQUEADAS</span>
+          <strong class="kpi-value" id="kpiBlockedCount">0</strong>
+          <span class="kpi-foot" id="kpiGpuStatus">RTX 3050: Standby</span>
+        </article>
+      </section>
+
+      <!-- Row 2: Gamer Telemetry Charts (24h Activity Pulse + Top Games XP Bars) -->
+      <section class="charts-grid" aria-label="Telemetria e Gráficos Estilo Game">
+        <article class="panel-card chart-panel">
+          <div class="panel-header">
+            <div>
+              <span class="panel-eyebrow">TELEMETRIA EM TEMPO REAL · 24 HORAS</span>
+              <h2>Pulso de Acessos &amp; Partidas (Gamer Graph)</h2>
+            </div>
+            <div class="chart-legend">
+              <span class="legend-item"><i class="dot-cyan"></i> Acessos (Logins)</span>
+              <span class="legend-item"><i class="dot-green"></i> Partidas Jogadas</span>
+            </div>
+          </div>
+
+          <div class="svg-chart-wrap" id="activityChartMount"></div>
+        </article>
+
+        <article class="panel-card">
+          <div class="panel-header">
+            <div>
+              <span class="panel-eyebrow">RANKING DO CONSOLE</span>
+              <h2>Jogos Mais Jogados (XP)</h2>
+            </div>
+          </div>
+          <div class="top-games-bars" id="topGamesMount"></div>
+        </article>
+      </section>
+
+      <!-- Row 3: Live Online Players + Direct Zero-Link Party Invite & Account Creation -->
+      <section class="social-admin-grid">
+        <!-- Live Online Players & Direct Invite (No Links Required!) -->
+        <article class="panel-card">
+          <div class="panel-header">
+            <div>
+              <span class="panel-eyebrow">ECOSSISTEMA AO VIVO · ZERO LINKS</span>
+              <h2>Usuários Logados &amp; Convite Direto Push</h2>
+            </div>
+
+            <div class="invite-game-picker">
+              <label for="directInviteGameSelect" class="sr-only">Jogo para Convite</label>
+              <select id="directInviteGameSelect" class="admin-select">
+                <option value="Super Bomberman 4">Super Bomberman 4 (SNES · 4P)</option>
+                <option value="Super Bomberman 5">Super Bomberman 5 (SNES · 4P)</option>
+                <option value="International Superstar Soccer Deluxe">ISS Deluxe (SNES · 4P)</option>
+                <option value="Super Mario Kart">Super Mario Kart (SNES · 2P)</option>
+                <option value="Top Gear">Top Gear (SNES · 2P)</option>
+                <option value="Ultimate Mortal Kombat 3">Ultimate Mortal Kombat 3 (SNES · 2P)</option>
+                <option value="Street Fighter II Turbo">Street Fighter II Turbo (SNES · 2P)</option>
+                <option value="Streets of Rage 2">Streets of Rage 2 (Mega Drive · 2P)</option>
+              </select>
+            </div>
+          </div>
+
+          <p class="panel-helper">
+            Clique em <strong>⚡ Convidar Direto</strong> para disparar um alerta sonoro estilo <em>Steam / Xbox Party</em> na tela do jogador logado sem precisar enviar link.
+          </p>
+
+          <div class="online-players-list" id="onlinePlayersMount"></div>
+        </article>
+
+        <!-- Create New Friend Account -->
+        <article class="panel-card">
+          <div class="panel-header">
+            <div>
+              <span class="panel-eyebrow">PROVISIONAMENTO ZERO-TRUST</span>
+              <h2>Criar Conta de Jogador</h2>
+            </div>
+          </div>
+
+          <form id="createUserForm" class="admin-form">
+            <div class="form-row-2">
+              <div class="field-group">
+                <label for="newUsername">Login (usuário)</label>
+                <input type="text" id="newUsername" placeholder="ex: lucas" required />
+              </div>
+              <div class="field-group">
+                <label for="newDisplayName">Nome no Console</label>
+                <input type="text" id="newDisplayName" placeholder="ex: Lucas P2" required />
+              </div>
+            </div>
+
+            <div class="form-row-2">
+              <div class="field-group">
+                <label for="newUserPassword">Senha Inicial</label>
+                <input type="password" id="newUserPassword" placeholder="Mínimo 6 caracteres" required />
+              </div>
+              <div class="field-group">
+                <label for="newUserTailscaleIp">IP Tailscale (Opcional)</label>
+                <input type="text" id="newUserTailscaleIp" placeholder="ex: 100.101.42.18" />
+              </div>
+            </div>
+
+            <div id="createUserFeedback" class="form-feedback hidden"></div>
+
+            <button type="submit" class="btn-fortress-primary">
+              ＋ Criar Conta Autorizada
+            </button>
+          </form>
+        </article>
+      </section>
+
+      <!-- Row 4: Full User Accounts Directory & Per-User Game History -->
+      <section class="panel-card" aria-label="Contas e Histórico de Jogos">
+        <div class="panel-header">
+          <div>
+            <span class="panel-eyebrow"> DIRETÓRIO DE CONTAS &amp; HISTÓRICO DE JOGOS</span>
+            <h2>Jogadores Cadastrados &amp; Últimas Partidas</h2>
+          </div>
+        </div>
+
+        <div class="users-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Jogador</th>
+                <th>Status / Presença</th>
+                <th>Rede Tailscale</th>
+                <th>Partidas</th>
+                <th>Histórico de Jogos Jogados</th>
+                <th>Último Acesso</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Row 5: Tailscale Mesh Tunnel Control, Master Password Reset & Security Audit Log -->
+      <section class="bottom-security-grid">
+        <article class="panel-card">
+          <div class="panel-header">
+            <div>
+              <span class="panel-eyebrow">TUNELAMENTO DE REDE · RFC 6598 (100.64.0.0/10)</span>
+              <h2>Malha Segura Tailscale &amp; Senha Master</h2>
+            </div>
+          </div>
+
+          <div class="tailscale-box">
+            <div class="tailscale-toggle-row">
+              <div>
+                <strong>Modo Estrito Tailscale (Lockdown 100.64.0.0/10)</strong>
+                <p>Quando ativado, jogadores comuns só entram se estiverem conectados na sua Tailnet ou com IP 100.x vinculado.</p>
+              </div>
+              <input type="checkbox" id="tailscaleLockdownToggle" class="admin-switch" />
+            </div>
+
+            <div class="tailscale-cmd-hint">
+              <span>IP Tailscale da VPS: <strong id="vpsTailscaleIpLabel">100.65.233.79</strong></span>
+              <code>tailscale up --accept-routes</code>
+            </div>
+          </div>
+
+          <hr class="panel-divider" />
+
+          <form id="changeAdminPwdForm" class="admin-form">
+            <div class="field-group">
+              <label for="newAdminPasswordInput">Redefinir Minha Senha Master (Admin)</label>
+              <div class="inline-input-btn">
+                <input
+                  type="password"
+                  id="newAdminPasswordInput"
+                  autocomplete="new-password"
+                  placeholder="Nova senha forte (mín. 8 caracteres)..."
+                  required
+                />
+                <button type="submit" class="btn-ghost-sm">Atualizar Senha</button>
+              </div>
+            </div>
+            <div id="adminPwdFeedback" class="form-feedback hidden"></div>
+          </form>
+        </article>
+
+        <article class="panel-card">
+          <div class="panel-header">
+            <div>
+              <span class="panel-eyebrow">AUDITORIA ZERO-TRUST</span>
+              <h2>Registro de Acessos &amp; Segurança</h2>
+            </div>
+          </div>
+          <div class="audit-log-list" id="accessLogsMount"></div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <script src="/admin.js"></script>
+</body>
+</html>

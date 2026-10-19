@@ -1,0 +1,721 @@
+:root {
+  --bg-obsidian: #07080c;
+  --surface-1: rgba(16, 19, 28, 0.86);
+  --surface-2: rgba(24, 29, 42, 0.92);
+  --border-subtle: rgba(255, 255, 255, 0.1);
+  --border-bright: rgba(255, 255, 255, 0.24);
+  --netflix-red: #e50914;
+  --neon-cyan: #38bdf8;
+  --neon-green: #46d369;
+  --neon-amber: #f59e0b;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100dvh;
+  background-color: var(--bg-obsidian);
+  color: var(--text-main);
+  font-family: 'Netflix Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.admin-ambient-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 18% 15%, rgba(229, 9, 20, 0.16) 0%, transparent 50%),
+    radial-gradient(circle at 82% 22%, rgba(56, 189, 248, 0.14) 0%, transparent 52%),
+    radial-gradient(circle at 50% 90%, rgba(70, 211, 105, 0.08) 0%, transparent 55%),
+    #07080c;
+}
+
+/* ==========================================================================
+   Fortress Login Screen
+   ========================================================================== */
+.fortress-gate {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.fortress-card {
+  width: min(460px, 100%);
+  padding: 2.4rem 2.2rem;
+  border-radius: 20px;
+  background: var(--surface-1);
+  border: 1px solid var(--border-bright);
+  backdrop-filter: blur(28px);
+  box-shadow:
+    0 32px 70px rgba(0, 0, 0, 0.92),
+    0 0 40px rgba(229, 9, 20, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+}
+
+.fortress-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.fortress-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  color: var(--text-muted);
+}
+
+.netflix-n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: var(--netflix-red);
+  color: #ffffff;
+  font-size: 0.95rem;
+  font-weight: 900;
+  box-shadow: 0 4px 16px rgba(229, 9, 20, 0.55);
+}
+
+.fortress-header h1 {
+  font-size: 1.55rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.fortress-subtitle {
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.fortress-subtitle code {
+  color: var(--neon-cyan);
+  font-weight: 700;
+}
+
+.fortress-form,
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.38rem;
+}
+
+.field-group label {
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #cbd5e1;
+}
+
+.field-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.toggle-pwd-btn {
+  background: transparent;
+  border: none;
+  color: var(--neon-cyan);
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.field-group input,
+.admin-select {
+  width: 100%;
+  padding: 0.75rem 0.95rem;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background: rgba(8, 10, 16, 0.85);
+  color: #ffffff;
+  font-size: 0.92rem;
+  outline: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.field-group input:focus,
+.admin-select:focus {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
+}
+
+.btn-fortress-primary {
+  padding: 0.85rem 1.4rem;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #e50914 0%, #b91c1c 100%);
+  color: #ffffff;
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 12px 28px rgba(229, 9, 20, 0.4);
+  transition: transform 0.16s ease, filter 0.16s ease;
+}
+
+.btn-fortress-primary:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.fortress-error {
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.18);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  color: #fca5a5;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.fortress-security-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.sec-pill {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.24rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+}
+
+/* ==========================================================================
+   Admin Command Center Shell
+   ========================================================================== */
+.admin-shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem clamp(1.25rem, 4vw, 3.5rem);
+  background: rgba(7, 8, 12, 0.88);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.brand-title {
+  font-size: 0.92rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.brand-sub {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.mesh-badge {
+  padding: 0.36rem 0.78rem;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #7dd3fc;
+}
+
+.btn-ghost-sm,
+.btn-danger-sm,
+.btn-invite-direct {
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.07);
+  color: #ffffff;
+  transition: all 0.16s ease;
+}
+
+.btn-ghost-sm:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: var(--border-bright);
+}
+
+.btn-danger-sm {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #fca5a5;
+}
+
+.btn-invite-direct {
+  background: linear-gradient(135deg, #16a34a 0%, #059669 100%);
+  border-color: rgba(70, 211, 105, 0.55);
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.35);
+}
+
+.btn-invite-direct:hover {
+  transform: scale(1.04);
+  filter: brightness(1.1);
+}
+
+.admin-main {
+  flex: 1;
+  padding: 1.6rem clamp(1.25rem, 4vw, 3.5rem) 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 1600px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* KPI Grid */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.1rem;
+}
+
+.kpi-card {
+  padding: 1.25rem 1.4rem;
+  border-radius: 16px;
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.5);
+}
+
+.kpi-online {
+  border-top: 3px solid var(--neon-green);
+}
+
+.kpi-matches {
+  border-top: 3px solid var(--neon-cyan);
+}
+
+.kpi-users {
+  border-top: 3px solid #a855f7;
+}
+
+.kpi-shield {
+  border-top: 3px solid var(--netflix-red);
+}
+
+.kpi-label {
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.kpi-value {
+  font-size: 2.25rem;
+  font-weight: 900;
+  line-height: 1.05;
+}
+
+.kpi-foot {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+/* Panels & Charts */
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1.45fr 1fr;
+  gap: 1.25rem;
+}
+
+.social-admin-grid,
+.bottom-security-grid {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: 1.25rem;
+}
+
+.panel-card {
+  padding: 1.4rem 1.5rem;
+  border-radius: 18px;
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.panel-eyebrow {
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  color: var(--neon-cyan);
+  text-transform: uppercase;
+}
+
+.panel-header h2 {
+  font-size: 1.12rem;
+  font-weight: 800;
+  margin-top: 0.15rem;
+}
+
+.panel-helper {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.chart-legend {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: #cbd5e1;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.dot-cyan,
+.dot-green {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot-cyan {
+  background: var(--neon-cyan);
+  box-shadow: 0 0 10px var(--neon-cyan);
+}
+
+.dot-green {
+  background: var(--neon-green);
+  box-shadow: 0 0 10px var(--neon-green);
+}
+
+.svg-chart-wrap {
+  width: 100%;
+  height: 210px;
+  background: rgba(8, 10, 16, 0.65);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 0.75rem;
+}
+
+.svg-chart-wrap svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Top Games XP Bars */
+.top-games-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.78rem;
+}
+
+.xp-bar-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.xp-bar-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.xp-bar-track {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.xp-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--neon-cyan) 0%, var(--neon-green) 100%);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.5);
+}
+
+/* Online Players List */
+.online-players-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.online-player-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.player-ident {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.live-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--neon-green);
+  box-shadow: 0 0 12px var(--neon-green);
+}
+
+.player-activity-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.form-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+}
+
+.form-feedback {
+  padding: 0.55rem 0.8rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: rgba(70, 211, 105, 0.16);
+  border: 1px solid rgba(70, 211, 105, 0.4);
+  color: #86efac;
+}
+
+/* Users Table */
+.users-table-wrap {
+  overflow-x: auto;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 0.85rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.admin-table th {
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.history-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.history-chip {
+  padding: 0.2rem 0.52rem;
+  border-radius: 6px;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  font-size: 0.7rem;
+  color: #bae6fd;
+}
+
+.badge-online {
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(70, 211, 105, 0.18);
+  color: #86efac;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.badge-offline {
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+/* Tailscale & Security Audit */
+.tailscale-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: rgba(56, 189, 248, 0.07);
+  border: 1px solid rgba(56, 189, 248, 0.24);
+}
+
+.tailscale-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.tailscale-toggle-row p {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+}
+
+.admin-switch {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--neon-cyan);
+  cursor: pointer;
+}
+
+.tailscale-cmd-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.76rem;
+  color: #cbd5e1;
+}
+
+.tailscale-cmd-hint code {
+  padding: 0.25rem 0.55rem;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.45);
+  color: var(--neon-cyan);
+}
+
+.panel-divider {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.inline-input-btn {
+  display: flex;
+  gap: 0.55rem;
+}
+
+.audit-log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.audit-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+  font-size: 0.75rem;
+}
+
+.audit-event {
+  font-weight: 800;
+  color: var(--neon-cyan);
+}
+
+.audit-event.danger {
+  color: #f87171;
+}
+
+@media (max-width: 960px) {
+  .charts-grid,
+  .social-admin-grid,
+  .bottom-security-grid {
+    grid-template-columns: 1fr;
+  }
+}

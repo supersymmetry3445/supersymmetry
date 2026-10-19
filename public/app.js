@@ -448,10 +448,24 @@ const WS_HANDLERS = {
     state.peerId = msg.peerId;
     state.rooms = msg.rooms || [];
     renderRoomsShelf();
+    if (window.SupersymmetrySocial) {
+      window.SupersymmetrySocial.setPeerId(msg.peerId);
+      window.SupersymmetrySocial.updateOnlinePlayers(msg.onlinePlayers || []);
+    }
   },
   'rooms-updated': (msg) => {
     state.rooms = msg.rooms || [];
     renderRoomsShelf();
+  },
+  'presence-updated': (msg) => {
+    if (window.SupersymmetrySocial) {
+      window.SupersymmetrySocial.updateOnlinePlayers(msg.onlinePlayers || []);
+    }
+  },
+  'direct-invite': (msg) => {
+    if (window.SupersymmetrySocial && msg.invite) {
+      window.SupersymmetrySocial.receiveDirectInvite(msg.invite);
+    }
   },
   'gpu-updated': (msg) => {
     state.gpu = msg.gpu;
@@ -797,52 +811,6 @@ function closeConsoleStage() {
   document.getElementById('consoleStage').classList.add('hidden');
 }
 
-function sendRomWithProgress(file, consoleId, title, onProgress) {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/api/roms/upload');
-    xhr.setRequestHeader('x-rom-filename', encodeURIComponent(file.name));
-    xhr.setRequestHeader('x-rom-console', encodeURIComponent(consoleId));
-    if (title) xhr.setRequestHeader('x-rom-title', encodeURIComponent(title));
-    xhr.upload.onprogress = onProgress;
-    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(xhr.responseText)));
-    xhr.onerror = () => reject(new Error('Falha no envio'));
-    xhr.send(file);
-  });
-}
-
-async function handleRomUploadSubmit(ev) {
-  ev.preventDefault();
-  const file = document.getElementById('uploadFileInput').files[0];
-  if (!file) return;
-
-  const consoleId = document.getElementById('uploadConsoleSelect').value;
-  const title = document.getElementById('uploadTitleInput').value.trim();
-  const progressBox = document.getElementById('uploadProgressBox');
-  const progressFill = document.getElementById('uploadProgressFill');
-  const progressText = document.getElementById('uploadProgressText');
-  const submitBtn = document.getElementById('submitUploadBtn');
-
-  progressBox.classList.remove('hidden');
-  submitBtn.disabled = true;
-
-  try {
-    await sendRomWithProgress(file, consoleId, title, (e) => {
-      if (!e.lengthComputable) return;
-      const pct = Math.round((e.loaded / e.total) * 100);
-      progressFill.style.width = `${pct}%`;
-      progressText.textContent = `Instalando (${pct}%)`;
-    });
-
-    await fetchDeckLibrary();
-    document.getElementById('uploadRomForm').reset();
-    document.getElementById('uploadRomDialog').close();
-  } finally {
-    submitBtn.disabled = false;
-    setTimeout(() => progressBox.classList.add('hidden'), 800);
-  }
-}
-
 /* ==========================================================================
    Multi-Touch Virtual Gamepad Engine (PointerEvents + setPointerCapture)
    ========================================================================== */
@@ -1176,7 +1144,6 @@ function bindUiEvents() {
     applyFiltersAndRender();
   });
 
-  document.getElementById('uploadRomForm').addEventListener('submit', handleRomUploadSubmit);
   document.getElementById('instantLocalRomInput').addEventListener('change', (ev) => {
     const file = ev.target.files[0];
     if (file) launchLocalFileAsHost(file);
@@ -1199,6 +1166,15 @@ function bindUiEvents() {
 
 window.addEventListener('DOMContentLoaded', () => {
   bindUiEvents();
+  if (window.SupersymmetrySocial) {
+    window.SupersymmetrySocial.init({
+      state,
+      joinRoomById,
+      launchGameItem,
+      onPlayChime: playConsoleTone,
+      fetchDeckLibrary
+    });
+  }
   fetchDeckLibrary();
   connectWebSocket();
   requestAnimationFrame(pollGamepadsLoop);
