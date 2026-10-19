@@ -349,10 +349,10 @@ class AuthManager {
       event: 'LOGIN_FAILED',
       ip,
       isTailscale: isTailscaleCgnatIp(ip),
-      detail: requireAdmin ? 'Tentativa negada no Portal Admin' : 'Credenciais inválidas'
+      detail: requireAdmin ? 'Acesso recusado (Sistema)' : 'Conta ou senha incorreta'
     });
     await this.saveState();
-    return { error: 'Credenciais inválidas ou acesso não autorizado.', status: 401 };
+    return { error: 'Conta ou senha incorreta.', status: 401 };
   }
 
   async authenticate({ username, password, ip, requireAdmin = false }) {
@@ -363,10 +363,10 @@ class AuthManager {
         event: 'SECURITY_LOCKOUT',
         ip,
         isTailscale: isTailscaleCgnatIp(ip),
-        detail: 'Bloqueio temporário anti-força-bruta ativo'
+        detail: 'Limite de tentativas excedido'
       });
       await this.saveState();
-      return { error: 'Muitas tentativas. Aguarde 15 minutos.', status: 429 };
+      return { error: 'Muitas tentativas. Aguarde alguns minutos.', status: 429 };
     }
 
     const user = this.findUserByCredentials(username, password);
@@ -375,7 +375,7 @@ class AuthManager {
     }
 
     if (!this.passesNetworkPolicy(user, ip)) {
-      return { error: 'Acesso restrito à rede segura Tailscale (100.64.0.0/10).', status: 403 };
+      return { error: 'Conexão não autorizada.', status: 403 };
     }
 
     this.failedAttempts.delete(rateKey);

@@ -57,6 +57,10 @@ test('Supersymmetry API: /api/deck and /api/health return SteamOS library with 2
     assert.ok(htmlText.includes('id="virtualGamepad"'));
     assert.ok(htmlText.includes('id="touchDpad"'));
     assert.ok(htmlText.includes('id="touchActionCluster"'));
+    assert.ok(htmlText.includes('id="icon-reflektor-diamond"'));
+    assert.ok(htmlText.includes('id="reflektorFadeMask"'));
+    assert.ok(htmlText.includes('id="heroBoxartMirror"'));
+    assert.ok(!htmlText.includes('N GAMES'));
   } finally {
     await cleanup();
   }
@@ -224,7 +228,7 @@ test('Supersymmetry Zero-Trust Admin Fortress: authenticates @derN3445, creates 
     const adminHostHtml = await fetch(`${baseUrl}/`, {
       headers: { 'X-Forwarded-Host': 'admin.superssimetry.kalopsia.me' }
     }).then((r) => r.text());
-    assert.ok(adminHostHtml.includes('Supersymmetry Admin Fortress'));
+    assert.ok(adminHostHtml.includes('Supersymmetry — Administração'));
     assert.ok(adminHostHtml.includes('adminLoginForm'));
 
     const unauthOverview = await fetch(`${baseUrl}/api/admin/overview`);
@@ -236,6 +240,8 @@ test('Supersymmetry Zero-Trust Admin Fortress: authenticates @derN3445, creates 
       body: JSON.stringify({ username: 'admin', password: 'wrong-password', requireAdmin: true })
     });
     assert.equal(wrongLogin.status, 401);
+    const wrongBody = await wrongLogin.json();
+    assert.equal(wrongBody.error, 'Conta ou senha incorreta.');
 
     const sessionCookie = await loginAsMasterAdmin(baseUrl);
     const createPlayerRes = await fetch(`${baseUrl}/api/admin/users`, {

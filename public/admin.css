@@ -1,15 +1,15 @@
 :root {
-  --bg-obsidian: #07080c;
-  --surface-1: rgba(16, 19, 28, 0.86);
-  --surface-2: rgba(24, 29, 42, 0.92);
-  --border-subtle: rgba(255, 255, 255, 0.1);
-  --border-bright: rgba(255, 255, 255, 0.24);
-  --netflix-red: #e50914;
-  --neon-cyan: #38bdf8;
+  --bg-obsidian: #06070a;
+  --surface-1: rgba(12, 14, 20, 0.88);
+  --surface-2: rgba(18, 21, 30, 0.94);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-bright: rgba(255, 255, 255, 0.22);
+  --reflektor-coral: #e15b4b;
+  --reflektor-gold: #d9a05b;
+  --reflektor-cyan: #72b4d4;
   --neon-green: #46d369;
-  --neon-amber: #f59e0b;
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
+  --text-main: #f4f4f6;
+  --text-muted: #8a909e;
 }
 
 * {
@@ -22,7 +22,7 @@ body {
   min-height: 100dvh;
   background-color: var(--bg-obsidian);
   color: var(--text-main);
-  font-family: 'Netflix Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
@@ -39,19 +39,48 @@ body {
   clip: rect(0, 0, 0, 0);
 }
 
+.reflektor-prism-beam {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 60;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(114, 180, 212, 0.55) 28%,
+    rgba(255, 255, 255, 0.92) 50%,
+    rgba(225, 91, 75, 0.65) 72%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
 .admin-ambient-bg {
   position: fixed;
   inset: 0;
   z-index: -1;
   background:
-    radial-gradient(circle at 18% 15%, rgba(229, 9, 20, 0.16) 0%, transparent 50%),
-    radial-gradient(circle at 82% 22%, rgba(56, 189, 248, 0.14) 0%, transparent 52%),
-    radial-gradient(circle at 50% 90%, rgba(70, 211, 105, 0.08) 0%, transparent 55%),
-    #07080c;
+    radial-gradient(circle at 20% 15%, rgba(225, 91, 75, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(114, 180, 212, 0.1) 0%, transparent 52%),
+    #06070a;
+}
+
+.reflektor-emblem-lg {
+  width: 34px;
+  height: 34px;
+  color: #f4f4f6;
+}
+
+.reflektor-emblem-sm {
+  width: 24px;
+  height: 24px;
+  color: #f4f4f6;
 }
 
 /* ==========================================================================
-   Fortress Login Screen
+   Administration Sign-In Gate
    ========================================================================== */
 .fortress-gate {
   min-height: 100dvh;
@@ -62,65 +91,37 @@ body {
 }
 
 .fortress-card {
-  width: min(460px, 100%);
-  padding: 2.4rem 2.2rem;
-  border-radius: 20px;
+  width: min(380px, 100%);
+  padding: 2.3rem 2.1rem;
+  border-radius: 6px;
   background: var(--surface-1);
-  border: 1px solid var(--border-bright);
+  border: 1px solid rgba(255, 255, 255, 0.14);
   backdrop-filter: blur(28px);
-  box-shadow:
-    0 32px 70px rgba(0, 0, 0, 0.92),
-    0 0 40px rgba(229, 9, 20, 0.18);
+  box-shadow: 0 32px 72px rgba(0, 0, 0, 0.92);
   display: flex;
   flex-direction: column;
-  gap: 1.4rem;
+  gap: 1.5rem;
 }
 
 .fortress-header {
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  align-items: center;
+  text-align: center;
+  gap: 0.45rem;
 }
 
 .fortress-brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
   font-size: 0.72rem;
-  font-weight: 900;
-  letter-spacing: 0.16em;
+  font-weight: 700;
+  letter-spacing: 0.34em;
   color: var(--text-muted);
-}
-
-.netflix-n {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
-  background: var(--netflix-red);
-  color: #ffffff;
-  font-size: 0.95rem;
-  font-weight: 900;
-  box-shadow: 0 4px 16px rgba(229, 9, 20, 0.55);
 }
 
 .fortress-header h1 {
-  font-size: 1.55rem;
-  font-weight: 900;
-  letter-spacing: -0.02em;
-}
-
-.fortress-subtitle {
-  font-size: 0.84rem;
-  line-height: 1.5;
-  color: var(--text-muted);
-}
-
-.fortress-subtitle code {
-  color: var(--neon-cyan);
-  font-weight: 700;
+  font-size: 1.25rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
 }
 
 .fortress-form,
@@ -137,11 +138,11 @@ body {
 }
 
 .field-group label {
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #cbd5e1;
+  color: var(--text-muted);
 }
 
 .field-label-row {
@@ -153,79 +154,64 @@ body {
 .toggle-pwd-btn {
   background: transparent;
   border: none;
-  color: var(--neon-cyan);
-  font-size: 0.74rem;
-  font-weight: 700;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
   cursor: pointer;
+}
+
+.toggle-pwd-btn:hover {
+  color: var(--text-main);
 }
 
 .field-group input,
 .admin-select {
   width: 100%;
-  padding: 0.75rem 0.95rem;
-  border-radius: 10px;
+  padding: 0.72rem 0.9rem;
+  border-radius: 4px;
   border: 1px solid var(--border-subtle);
-  background: rgba(8, 10, 16, 0.85);
+  background: rgba(6, 7, 10, 0.85);
   color: #ffffff;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   outline: none;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  transition: border-color 0.18s ease;
 }
 
 .field-group input:focus,
 .admin-select:focus {
-  border-color: var(--neon-cyan);
-  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
+  border-color: rgba(255, 255, 255, 0.45);
 }
 
 .btn-fortress-primary {
-  padding: 0.85rem 1.4rem;
-  border-radius: 10px;
-  border: none;
-  background: linear-gradient(135deg, #e50914 0%, #b91c1c 100%);
-  color: #ffffff;
-  font-size: 0.92rem;
-  font-weight: 800;
-  letter-spacing: 0.02em;
+  padding: 0.8rem 1.4rem;
+  border-radius: 4px;
+  border: 1px solid #ffffff;
+  background: #f4f4f6;
+  color: #06070a;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   cursor: pointer;
-  box-shadow: 0 12px 28px rgba(229, 9, 20, 0.4);
-  transition: transform 0.16s ease, filter 0.16s ease;
+  transition: background 0.16s ease;
 }
 
 .btn-fortress-primary:hover {
-  filter: brightness(1.1);
-  transform: translateY(-1px);
+  background: #ffffff;
 }
 
 .fortress-error {
   padding: 0.65rem 0.85rem;
-  border-radius: 8px;
-  background: rgba(239, 68, 68, 0.18);
-  border: 1px solid rgba(239, 68, 68, 0.45);
-  color: #fca5a5;
+  border-radius: 4px;
+  background: rgba(225, 91, 75, 0.14);
+  border: 1px solid rgba(225, 91, 75, 0.42);
+  color: #f3a69c;
   font-size: 0.82rem;
-  font-weight: 700;
-}
-
-.fortress-security-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  padding-top: 0.4rem;
-  border-top: 1px solid var(--border-subtle);
-}
-
-.sec-pill {
-  font-size: 0.68rem;
-  font-weight: 700;
-  padding: 0.24rem 0.55rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  color: var(--text-muted);
+  font-weight: 600;
 }
 
 /* ==========================================================================
-   Admin Command Center Shell
+   Administration Shell
    ========================================================================== */
 .admin-shell {
   min-height: 100dvh;
@@ -242,7 +228,7 @@ body {
   justify-content: space-between;
   gap: 1rem;
   padding: 1rem clamp(1.25rem, 4vw, 3.5rem);
-  background: rgba(7, 8, 12, 0.88);
+  background: rgba(6, 7, 10, 0.88);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border-subtle);
 }
@@ -254,13 +240,13 @@ body {
 }
 
 .brand-title {
-  font-size: 0.92rem;
-  font-weight: 900;
-  letter-spacing: 0.1em;
+  font-size: 0.86rem;
+  font-weight: 700;
+  letter-spacing: 0.24em;
 }
 
 .brand-sub {
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   color: var(--text-muted);
 }
 
@@ -272,50 +258,51 @@ body {
 }
 
 .mesh-badge {
-  padding: 0.36rem 0.78rem;
-  border-radius: 999px;
-  font-size: 0.74rem;
-  font-weight: 800;
-  background: rgba(56, 189, 248, 0.14);
-  border: 1px solid rgba(56, 189, 248, 0.35);
-  color: #7dd3fc;
+  padding: 0.34rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: rgba(114, 180, 212, 0.12);
+  border: 1px solid rgba(114, 180, 212, 0.32);
+  color: #bae6fd;
 }
 
 .btn-ghost-sm,
 .btn-danger-sm,
 .btn-invite-direct {
-  padding: 0.45rem 0.9rem;
-  border-radius: 8px;
-  font-size: 0.78rem;
-  font-weight: 800;
+  padding: 0.44rem 0.88rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   text-decoration: none;
   cursor: pointer;
   border: 1px solid var(--border-subtle);
-  background: rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.05);
   color: #ffffff;
   transition: all 0.16s ease;
 }
 
 .btn-ghost-sm:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.12);
   border-color: var(--border-bright);
 }
 
 .btn-danger-sm {
-  background: rgba(239, 68, 68, 0.18);
-  border-color: rgba(239, 68, 68, 0.45);
-  color: #fca5a5;
+  background: rgba(225, 91, 75, 0.14);
+  border-color: rgba(225, 91, 75, 0.4);
+  color: #f3a69c;
 }
 
 .btn-invite-direct {
-  background: linear-gradient(135deg, #16a34a 0%, #059669 100%);
-  border-color: rgba(70, 211, 105, 0.55);
-  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.35);
+  background: #f4f4f6;
+  color: #06070a;
+  border-color: #ffffff;
 }
 
 .btn-invite-direct:hover {
-  transform: scale(1.04);
-  filter: brightness(1.1);
+  background: #ffffff;
 }
 
 .admin-main {
@@ -338,46 +325,45 @@ body {
 
 .kpi-card {
   padding: 1.25rem 1.4rem;
-  border-radius: 16px;
+  border-radius: 6px;
   background: var(--surface-1);
   border: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.5);
 }
 
 .kpi-online {
-  border-top: 3px solid var(--neon-green);
+  border-top: 2px solid var(--neon-green);
 }
 
 .kpi-matches {
-  border-top: 3px solid var(--neon-cyan);
+  border-top: 2px solid var(--reflektor-cyan);
 }
 
 .kpi-users {
-  border-top: 3px solid #a855f7;
+  border-top: 2px solid var(--reflektor-gold);
 }
 
 .kpi-shield {
-  border-top: 3px solid var(--netflix-red);
+  border-top: 2px solid var(--reflektor-coral);
 }
 
 .kpi-label {
-  font-size: 0.68rem;
-  font-weight: 900;
-  letter-spacing: 0.1em;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
   color: var(--text-muted);
 }
 
 .kpi-value {
-  font-size: 2.25rem;
-  font-weight: 900;
+  font-size: 2.15rem;
+  font-weight: 600;
   line-height: 1.05;
 }
 
 .kpi-foot {
-  font-size: 0.76rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
 }
 
@@ -397,10 +383,9 @@ body {
 
 .panel-card {
   padding: 1.4rem 1.5rem;
-  border-radius: 18px;
+  border-radius: 6px;
   background: var(--surface-1);
   border: 1px solid var(--border-subtle);
-  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.55);
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -415,17 +400,17 @@ body {
 }
 
 .panel-eyebrow {
-  font-size: 0.66rem;
-  font-weight: 900;
-  letter-spacing: 0.14em;
-  color: var(--neon-cyan);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--reflektor-gold);
   text-transform: uppercase;
 }
 
 .panel-header h2 {
-  font-size: 1.12rem;
-  font-weight: 800;
-  margin-top: 0.15rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-top: 0.18rem;
 }
 
 .panel-helper {
@@ -437,7 +422,7 @@ body {
 .chart-legend {
   display: flex;
   gap: 1rem;
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   color: #cbd5e1;
 }
 
@@ -448,28 +433,26 @@ body {
 }
 
 .dot-cyan,
-.dot-green {
-  width: 10px;
-  height: 10px;
+.dot-coral {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   display: inline-block;
 }
 
 .dot-cyan {
-  background: var(--neon-cyan);
-  box-shadow: 0 0 10px var(--neon-cyan);
+  background: var(--reflektor-cyan);
 }
 
-.dot-green {
-  background: var(--neon-green);
-  box-shadow: 0 0 10px var(--neon-green);
+.dot-coral {
+  background: var(--reflektor-coral);
 }
 
 .svg-chart-wrap {
   width: 100%;
   height: 210px;
-  background: rgba(8, 10, 16, 0.65);
-  border-radius: 12px;
+  background: rgba(6, 7, 10, 0.65);
+  border-radius: 4px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   padding: 0.75rem;
 }
@@ -480,7 +463,7 @@ body {
   overflow: visible;
 }
 
-/* Top Games XP Bars */
+/* Top Games Bars */
 .top-games-bars {
   display: flex;
   flex-direction: column;
@@ -497,21 +480,19 @@ body {
   display: flex;
   justify-content: space-between;
   font-size: 0.8rem;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .xp-bar-track {
-  height: 10px;
-  border-radius: 999px;
+  height: 6px;
+  border-radius: 2px;
   background: rgba(255, 255, 255, 0.07);
   overflow: hidden;
 }
 
 .xp-bar-fill {
   height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--neon-cyan) 0%, var(--neon-green) 100%);
-  box-shadow: 0 0 14px rgba(56, 189, 248, 0.5);
+  background: linear-gradient(90deg, var(--reflektor-cyan) 0%, var(--reflektor-coral) 100%);
 }
 
 /* Online Players List */
@@ -527,9 +508,9 @@ body {
   justify-content: space-between;
   gap: 1rem;
   padding: 0.8rem 1rem;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .player-ident {
@@ -539,11 +520,10 @@ body {
 }
 
 .live-dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--neon-green);
-  box-shadow: 0 0 12px var(--neon-green);
 }
 
 .player-activity-sub {
@@ -559,11 +539,11 @@ body {
 
 .form-feedback {
   padding: 0.55rem 0.8rem;
-  border-radius: 8px;
-  font-size: 0.8rem;
-  font-weight: 700;
-  background: rgba(70, 211, 105, 0.16);
-  border: 1px solid rgba(70, 211, 105, 0.4);
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: rgba(70, 211, 105, 0.14);
+  border: 1px solid rgba(70, 211, 105, 0.35);
   color: #86efac;
 }
 
@@ -586,9 +566,9 @@ body {
 }
 
 .admin-table th {
-  font-size: 0.7rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-muted);
 }
@@ -600,41 +580,41 @@ body {
 }
 
 .history-chip {
-  padding: 0.2rem 0.52rem;
-  border-radius: 6px;
-  background: rgba(56, 189, 248, 0.12);
-  border: 1px solid rgba(56, 189, 248, 0.28);
+  padding: 0.18rem 0.5rem;
+  border-radius: 3px;
+  background: rgba(114, 180, 212, 0.12);
+  border: 1px solid rgba(114, 180, 212, 0.25);
   font-size: 0.7rem;
   color: #bae6fd;
 }
 
 .badge-online {
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  background: rgba(70, 211, 105, 0.18);
+  padding: 0.2rem 0.52rem;
+  border-radius: 3px;
+  background: rgba(70, 211, 105, 0.15);
   color: #86efac;
   font-size: 0.7rem;
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .badge-offline {
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.07);
+  padding: 0.2rem 0.52rem;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
   color: var(--text-muted);
   font-size: 0.7rem;
-  font-weight: 700;
+  font-weight: 600;
 }
 
-/* Tailscale & Security Audit */
+/* Tailscale & Event Log */
 .tailscale-box {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
   padding: 1rem;
-  border-radius: 12px;
-  background: rgba(56, 189, 248, 0.07);
-  border: 1px solid rgba(56, 189, 248, 0.24);
+  border-radius: 4px;
+  background: rgba(114, 180, 212, 0.06);
+  border: 1px solid rgba(114, 180, 212, 0.22);
 }
 
 .tailscale-toggle-row {
@@ -651,9 +631,9 @@ body {
 }
 
 .admin-switch {
-  width: 22px;
-  height: 22px;
-  accent-color: var(--neon-cyan);
+  width: 20px;
+  height: 20px;
+  accent-color: var(--reflektor-cyan);
   cursor: pointer;
 }
 
@@ -663,15 +643,15 @@ body {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 0.5rem;
-  font-size: 0.76rem;
+  font-size: 0.75rem;
   color: #cbd5e1;
 }
 
 .tailscale-cmd-hint code {
-  padding: 0.25rem 0.55rem;
-  border-radius: 6px;
+  padding: 0.22rem 0.52rem;
+  border-radius: 3px;
   background: rgba(0, 0, 0, 0.45);
-  color: var(--neon-cyan);
+  color: var(--reflektor-cyan);
 }
 
 .panel-divider {
@@ -698,18 +678,18 @@ body {
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.55rem 0.75rem;
-  border-radius: 8px;
+  border-radius: 4px;
   background: rgba(0, 0, 0, 0.35);
-  font-size: 0.75rem;
+  font-size: 0.74rem;
 }
 
 .audit-event {
-  font-weight: 800;
-  color: var(--neon-cyan);
+  font-weight: 700;
+  color: var(--reflektor-cyan);
 }
 
 .audit-event.danger {
-  color: #f87171;
+  color: var(--reflektor-coral);
 }
 
 @media (max-width: 960px) {

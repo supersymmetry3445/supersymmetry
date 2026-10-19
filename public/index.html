@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#080c11" />
+  <meta name="theme-color" content="#06070a" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Supersymmetry" />
   <link rel="manifest" href="/manifest.webmanifest" />
-  <title>Supersymmetry OS</title>
+  <title>Supersymmetry</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
@@ -16,41 +16,98 @@
   <input type="checkbox" id="iosHapticSwitch" switch class="sr-only" aria-hidden="true" tabindex="-1" />
   <label for="iosHapticSwitch" id="iosHapticLabel" class="sr-only" aria-hidden="true"></label>
 
-  <!-- Plane Z-0: Netflix Games Multi-Layer Ambient Atmosphere -->
+  <!-- Shared SVG Definitions: Reflektor Diamond Emblem & Luminance Reflection Mask -->
+  <svg width="0" height="0" class="sr-only" aria-hidden="true">
+    <defs>
+      <linearGradient id="reflektorPrismGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#f8fafc" />
+        <stop offset="48%" stop-color="#94a3b8" />
+        <stop offset="75%" stop-color="#7dd3fc" />
+        <stop offset="100%" stop-color="#fda4af" />
+      </linearGradient>
+      <linearGradient id="mirrorLuminanceGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.42" />
+        <stop offset="55%" stop-color="#666666" stop-opacity="0.12" />
+        <stop offset="100%" stop-color="#000000" stop-opacity="0" />
+      </linearGradient>
+      <mask id="reflektorFadeMask" maskContentUnits="objectBoundingBox">
+        <rect x="0" y="0" width="1" height="1" fill="url(#mirrorLuminanceGrad)" />
+      </mask>
+      <symbol id="icon-reflektor-diamond" viewBox="0 0 36 36">
+        <polygon points="18,2 34,18 18,34 2,18" fill="none" stroke="url(#reflektorPrismGrad)" stroke-width="1.75" />
+        <polygon points="18,8 28,18 18,28 8,18" fill="none" stroke="currentColor" stroke-width="1.1" stroke-opacity="0.65" />
+        <line x1="2" y1="18" x2="34" y2="18" stroke="currentColor" stroke-width="1.1" stroke-opacity="0.75" />
+        <line x1="18" y1="2" x2="18" y2="34" stroke="currentColor" stroke-width="1.1" stroke-opacity="0.35" />
+      </symbol>
+      <symbol id="icon-search" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="1.75" />
+        <line x1="16.2" y1="16.2" x2="21" y2="21" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" />
+      </symbol>
+      <symbol id="icon-rooms" viewBox="0 0 24 24">
+        <circle cx="9" cy="8" r="3.2" fill="none" stroke="currentColor" stroke-width="1.6" />
+        <path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+        <circle cx="17" cy="9" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5" />
+        <path d="M15.5 19c.3-2.2 2-3.8 4.5-3.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+      </symbol>
+      <symbol id="icon-gamepad" viewBox="0 0 24 24">
+        <rect x="2.5" y="6.5" width="19" height="11" rx="5.5" fill="none" stroke="currentColor" stroke-width="1.6" />
+        <line x1="8" y1="10" x2="8" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+        <line x1="6" y1="12" x2="10" y2="12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+        <circle cx="15.5" cy="10.8" r="1" fill="currentColor" />
+        <circle cx="17.8" cy="13" r="1" fill="currentColor" />
+      </symbol>
+      <symbol id="icon-audio-on" viewBox="0 0 24 24">
+        <polygon points="4,9 8,9 13,5 13,19 8,15 4,15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+        <path d="M16.5 8.5a5 5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+      </symbol>
+      <symbol id="icon-audio-off" viewBox="0 0 24 24">
+        <polygon points="4,9 8,9 13,5 13,19 8,15 4,15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+        <line x1="16" y1="9" x2="21" y2="15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+        <line x1="21" y1="9" x2="16" y2="15" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+      </symbol>
+      <symbol id="icon-eye" viewBox="0 0 24 24">
+        <path d="M2 12s3.8-6.5 10-6.5S22 12 22 12s-3.8 6.5-10 6.5S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="1.6" />
+        <circle cx="12" cy="12" r="2.8" fill="none" stroke="currentColor" stroke-width="1.6" />
+      </symbol>
+    </defs>
+  </svg>
+
+  <!-- Plane Z-0: Chiaroscuro Reflektor Atmosphere & Symmetry Horizon -->
   <div class="netflix-ambient-backdrop" id="heroBackdrop"></div>
   <div class="netflix-ambient-aura" id="heroAmbientAura"></div>
+  <div class="reflektor-prism-beam" aria-hidden="true"></div>
+  <div class="reflektor-horizon-axis" aria-hidden="true"></div>
   <div class="netflix-vignette"></div>
 
-  <!-- Console OS Shell (Fixed 100vw x 100dvh, Generous Spatial Margins) -->
+  <!-- Console OS Shell -->
   <div class="console-os-shell" id="homeView">
-    <!-- Top Netflix Games / Hawkins 2025 Spatial Navigation Bar -->
     <header class="steamos-topbar">
       <div class="topbar-left">
-        <div class="netflix-brand" title="Supersymmetry Games Hub">
-          <span class="netflix-n">N</span>
-          <span class="netflix-brand-text">GAMES</span>
+        <div class="reflektor-brand" title="Supersymmetry">
+          <svg class="reflektor-emblem-svg" aria-hidden="true"><use href="#icon-reflektor-diamond"></use></svg>
+          <span class="reflektor-wordmark">SUPERSYMMETRY</span>
         </div>
 
-        <nav class="steamos-tabs" id="consoleTabs" aria-label="Categorias do Console"></nav>
+        <nav class="steamos-tabs" id="consoleTabs" aria-label="Categorias"></nav>
       </div>
 
       <div class="topbar-right">
         <div class="search-pill">
-          <span aria-hidden="true">🔍</span>
-          <input id="searchInput" type="search" placeholder="Buscar título..." autocomplete="off" />
+          <svg class="ui-icon-svg" aria-hidden="true"><use href="#icon-search"></use></svg>
+          <input id="searchInput" type="search" placeholder="Filtrar biblioteca" autocomplete="off" />
         </div>
 
-        <button type="button" class="status-chip" id="openRoomsDrawerBtn" title="Salas Multiplayer Abertas">
-          <span>👥</span>
+        <button type="button" class="status-chip" id="openRoomsDrawerBtn" title="Salas Ativas">
+          <svg class="ui-icon-svg" aria-hidden="true"><use href="#icon-rooms"></use></svg>
           <span id="roomsCountBadge">Salas (0)</span>
         </button>
 
         <div class="status-chip" id="gamepadStatusChip" title="Controles Conectados">
-          <span>🎮</span>
+          <svg class="ui-icon-svg" aria-hidden="true"><use href="#icon-gamepad"></use></svg>
           <span id="gamepadCountLabel">0</span>
         </div>
 
-        <button type="button" class="status-chip qam-btn" id="openQuickMenuBtn" title="Menu Rápido (•••)">
+        <button type="button" class="status-chip qam-btn" id="openQuickMenuBtn" title="Sistema">
           <span>•••</span>
         </button>
 
@@ -58,111 +115,106 @@
       </div>
     </header>
 
-    <!-- Main Spatial Stage: Two-Column Hero Showcase + Uncropped Cover Carousel -->
+    <!-- Main Stage: Editorial Left + Mirrored 3D Cover Pedestal Right -->
     <main class="bazzite-stage">
-      <!-- Plane Z-1: Netflix Games Billboard Hero (Editorial Left + 3D Cover Art Showcase Right) -->
-      <section class="netflix-hero-grid" id="heroSection" aria-label="Jogo em Destaque">
+      <section class="netflix-hero-grid" id="heroSection" aria-label="Jogo Selecionado">
         <div class="hero-editorial-col">
-          <div class="netflix-series-eyebrow">
-            <span class="eyebrow-n-pill">N</span>
-            <span class="eyebrow-label">JOGOS DE CONSOLE · SEM DOWNLOAD</span>
+          <div class="reflektor-eyebrow">
+            <span class="reflektor-axis-dot" aria-hidden="true"></span>
+            <span class="eyebrow-label" id="heroConsoleTag">Super Nintendo</span>
+            <span class="eyebrow-sep" aria-hidden="true">/</span>
+            <span class="eyebrow-sub" id="heroSubtitle">Party · Arena 4 Jogadores</span>
           </div>
 
           <h1 class="hero-title" id="heroTitle">Super Bomberman 4</h1>
 
           <div class="hero-tags">
-            <span class="meta-badge meta-match" id="heroStatusTag">99% relevante</span>
             <span class="meta-badge meta-year" id="heroYearTag">1996</span>
-            <span class="meta-badge meta-system" id="heroConsoleTag">Super Nintendo</span>
             <span class="meta-badge meta-players" id="heroPlayersTag">Até 4 Jogadores</span>
-            <span class="meta-badge meta-hd">60 FPS · P2P</span>
+            <span class="meta-badge meta-match" id="heroStatusTag">Pronto</span>
           </div>
 
           <p class="hero-synopsis" id="heroSynopsis">
             Monte montarias especiais, lance bombas através da arena e dispute partidas explosivas para até 4 amigos simultâneos.
           </p>
-          <p class="hero-subtitle" id="heroSubtitle">Party · Arena 4 Jogadores</p>
 
-          <!-- Netflix Games Clean CTA Row -->
           <div class="netflix-cta-row">
             <button type="button" class="btn-netflix-play" id="heroPlayBtn">
-              <span class="play-icon-triangle">▶</span>
               <span id="heroPlayBtnText">Jogar</span>
               <span class="glyph glyph-a">A</span>
             </button>
 
             <button type="button" class="btn-netflix-secondary" id="heroPartyBtn">
-              <span>Salas Multiplayer</span>
+              <span>Salas</span>
               <span class="glyph glyph-x">X</span>
             </button>
           </div>
         </div>
 
-        <!-- Dedicated Right Stage: Floating 3D Cover Art + Angled Gameplay Preview with Generous Margin -->
+        <!-- Right Stage: Uncropped Cover Art + Optical Supersymmetry Reflection -->
         <div class="hero-cover-showcase" id="heroShowcaseStage" aria-hidden="true">
           <div class="hero-cover-glow" id="heroCoverGlow"></div>
 
-          <!-- Midground Z-Layer: Angled In-Game Screenshot Card -->
           <div class="hero-snap-card" id="heroSnapArt">
             <img id="heroSnapImg" src="" alt="" loading="eager" />
-            <span class="snap-card-badge">GAMEPLAY AO VIVO</span>
           </div>
 
-          <!-- Foreground Z-Layer: Uncropped Original Box Art with 3D Elevation & Generous Margin -->
-          <div class="hero-boxart-pedestal" id="heroBoxartFrame">
-            <img id="heroBoxartImg" src="" alt="" loading="eager" />
+          <div class="hero-pedestal-stack">
+            <div class="hero-boxart-pedestal" id="heroBoxartFrame">
+              <img id="heroBoxartImg" src="" alt="" loading="eager" />
+            </div>
+            <!-- Supersymmetry Optical Reflection across the Horizon Axis -->
+            <div class="hero-boxart-mirror" id="heroBoxartMirror">
+              <img id="heroBoxartMirrorImg" src="" alt="" loading="lazy" />
+            </div>
           </div>
         </div>
       </section>
 
-      <!-- Live Open Rooms Floating Banner (Only visible when friends have active rooms) -->
-      <section class="live-rooms-strip hidden" id="liveRoomsShelf" aria-label="Salas Abertas Agora">
+      <!-- Active Multiplayer Rooms Strip -->
+      <section class="live-rooms-strip hidden" id="liveRoomsShelf" aria-label="Salas Abertas">
         <div class="rooms-row" id="roomsGrid"></div>
       </section>
 
-      <!-- Plane Z-2: Netflix Games Horizontal Row (Uncropped Cover Pedestals with Breathing Margin) -->
-      <section class="carousel-deck-section" aria-label="Fileira de Jogos">
+      <!-- Horizontal Cover Row -->
+      <section class="carousel-deck-section" aria-label="Biblioteca">
         <div class="carousel-header-row">
           <div class="carousel-section-title">
-            <h2 id="shelfTitle">Populares na Netflix Games</h2>
+            <h2 id="shelfTitle">Biblioteca</h2>
             <span class="shelf-count" id="shelfCountLabel">24 títulos</span>
           </div>
 
           <div class="carousel-nav-arrows">
-            <button type="button" class="carousel-arrow-btn" id="carouselPrevBtn" aria-label="Jogo Anterior">◀</button>
-            <button type="button" class="carousel-arrow-btn" id="carouselNextBtn" aria-label="Próximo Jogo">▶</button>
+            <button type="button" class="carousel-arrow-btn" id="carouselPrevBtn" aria-label="Anterior">‹</button>
+            <button type="button" class="carousel-arrow-btn" id="carouselNextBtn" aria-label="Próximo">›</button>
           </div>
         </div>
 
-        <div class="capsules-carousel" id="capsulesGrid" role="listbox" aria-label="Jogos Disponíveis"></div>
+        <div class="capsules-carousel" id="capsulesGrid" role="listbox" aria-label="Jogos"></div>
       </section>
     </main>
 
-    <!-- Subtle Bottom Console Controller Hints -->
+    <!-- Bottom Console Prompts -->
     <footer class="steamos-bottombar">
       <div class="bottom-left">
         <button type="button" class="bottom-prompt" id="bottomMenuBtn">
           <span class="glyph glyph-steam">MENU</span>
-          <span>Opções</span>
+          <span>Sistema</span>
         </button>
-        <button type="button" class="bottom-prompt" id="toggleUiSoundBtn" title="Sons do Console">
-          <span class="glyph glyph-bumper" id="uiSoundGlyph">🔊</span>
-          <span>Áudio UI</span>
+        <button type="button" class="bottom-prompt" id="toggleUiSoundBtn" title="Som da Interface">
+          <span class="glyph glyph-bumper" id="uiSoundGlyph">SOM</span>
+          <span id="uiSoundLabel">Ativo</span>
         </button>
       </div>
 
       <div class="bottom-right">
         <div class="bottom-prompt desktop-only-prompt">
-          <span class="glyph glyph-bumper">◀ ▶</span>
-          <span>Explorar Capas</span>
-        </div>
-        <div class="bottom-prompt desktop-only-prompt">
           <span class="glyph glyph-bumper">L1 / R1</span>
-          <span>Categorias</span>
+          <span>Coleções</span>
         </div>
         <button type="button" class="bottom-prompt" id="bottomImportBtn">
           <span class="glyph glyph-y">Y</span>
-          <span>Cartucho Local</span>
+          <span>Cartucho</span>
         </button>
         <button type="button" class="bottom-prompt" id="bottomPartyBtn">
           <span class="glyph glyph-x">X</span>
@@ -170,32 +222,31 @@
         </button>
         <button type="button" class="bottom-prompt" id="bottomPlayBtn">
           <span class="glyph glyph-a">A</span>
-          <span>Jogar</span>
+          <span>Iniciar</span>
         </button>
       </div>
     </footer>
   </div>
 
-  <!-- 100% Edge-to-Edge Fullscreen In-Game Console Stage (Zero Web Chrome!) -->
-  <section class="ingame-stage hidden" id="consoleStage" aria-label="Jogo em Execução">
-    <!-- Floating SteamOS Guide Pill (Replaces web header bar) -->
+  <!-- Fullscreen In-Game Console Stage -->
+  <section class="ingame-stage hidden" id="consoleStage" aria-label="Sessão em Execução">
     <div class="floating-steam-hud">
-      <button type="button" class="steam-guide-pill" id="openIngameOverlayBtn" title="Abrir Overlay do Console (STEAM)">
-        <span class="glyph glyph-steam">STEAM</span>
+      <button type="button" class="steam-guide-pill" id="openIngameOverlayBtn" title="Menu da Partida">
+        <span class="glyph glyph-steam">MENU</span>
         <strong id="stageGameTitle">Jogo</strong>
         <span class="tag-pill tag-players" id="stageRoleBadge">P1</span>
       </button>
 
-      <button type="button" class="steam-guide-pill" id="toggleTouchPadBtn" title="Ativar/Ocultar Controles Touch">
-        🎮 Touch
+      <button type="button" class="steam-guide-pill" id="toggleTouchPadBtn" title="Controles na Tela">
+        Touch
       </button>
 
-      <button type="button" class="steam-guide-pill" id="toggleGamepadOnlyBtn" title="Modo Controle Sem Fio (2ª Tela)">
-        📱 Controle
+      <button type="button" class="steam-guide-pill" id="toggleGamepadOnlyBtn" title="Modo Controle Sem Fio">
+        Controle
       </button>
 
-      <button type="button" class="steam-guide-pill steam-pill-exit" id="closeStageBtn" title="Encerrar Jogo e Voltar ao Console">
-        ✕ Sair
+      <button type="button" class="steam-guide-pill steam-pill-exit" id="closeStageBtn" title="Sair do Jogo">
+        Sair
       </button>
     </div>
 
@@ -207,17 +258,17 @@
           <div id="controllerOnlyBanner" class="controller-only-banner hidden">
             <div class="controller-only-card">
               <span class="tag-pill tag-system" id="padOnlySlotBadge">CONTROLE ATIVO</span>
-              <h3>Modo Controle Sem Fio</h3>
-              <p>Seus comandos estão sendo enviados em tempo real para a tela principal da sala.</p>
+              <h3>Modo Controle</h3>
+              <p>Comandos transmitidos em tempo real para a tela principal.</p>
             </div>
           </div>
           <div id="guestOverlayHint" class="guest-overlay-hint hidden">
-            Conectado em Tempo Real · Use o Controle Touch, Gamepad Bluetooth/USB ou Teclado
+            Conectado à sessão
           </div>
         </div>
 
-        <!-- Universal Multi-Touch Virtual Gamepad (Mobile Portrait, Mobile Landscape & Touch PC) -->
-        <div class="virtual-gamepad hidden" id="virtualGamepad" aria-label="Controle Virtual Multi-Touch">
+        <!-- Multi-Touch Virtual Gamepad -->
+        <div class="virtual-gamepad hidden" id="virtualGamepad" aria-label="Controle Virtual">
           <div class="vpad-top-row">
             <div class="vpad-shoulders">
               <button type="button" class="vpad-shoulder-btn" data-pad-btn="6">L2</button>
@@ -237,7 +288,7 @@
 
           <div class="vpad-main-row">
             <div class="vpad-left-zone">
-              <div class="vpad-dpad" id="touchDpad" role="application" aria-label="Direcional D-Pad 8 Direções">
+              <div class="vpad-dpad" id="touchDpad" role="application" aria-label="Direcional">
                 <span class="dpad-arm dpad-up" data-dir="up">▲</span>
                 <span class="dpad-arm dpad-right" data-dir="right">▶</span>
                 <span class="dpad-arm dpad-down" data-dir="down">▼</span>
@@ -247,7 +298,7 @@
             </div>
 
             <div class="vpad-right-zone">
-              <div class="vpad-diamond" id="touchActionCluster" role="application" aria-label="Botões de Ação Y X B A">
+              <div class="vpad-diamond" id="touchActionCluster" role="application" aria-label="Botões de Ação">
                 <button type="button" class="vpad-face-btn vpad-btn-x" data-pad-btn="3">X</button>
                 <button type="button" class="vpad-face-btn vpad-btn-y" data-pad-btn="2">Y</button>
                 <button type="button" class="vpad-face-btn vpad-btn-a" data-pad-btn="1">A</button>
@@ -258,28 +309,28 @@
         </div>
       </div>
 
-      <!-- SteamOS Frosted Glass In-Game Overlay Drawer (Hidden until [STEAM] is pressed) -->
+      <!-- In-Game Overlay Drawer -->
       <aside class="ingame-sidebar hidden" id="ingameSidebar">
         <div class="qam-header">
           <div>
             <span class="tag-pill tag-system" id="stageConsoleBadge">SNES</span>
             <span class="room-pill" id="activeRoomCode">Sala #LOCAL</span>
           </div>
-          <button type="button" class="hud-btn" id="toggleSidebarBtn">✕ Fechar</button>
+          <button type="button" class="hud-btn" id="toggleSidebarBtn">Fechar</button>
         </div>
 
         <div class="qam-btn-stack">
-          <button type="button" class="qam-action-btn" id="fullscreenStageBtn">⛶ Alternar Tela Cheia</button>
-          <button type="button" class="qam-action-btn hud-btn-exit" id="overlayExitGameBtn">✕ Encerrar Jogo</button>
+          <button type="button" class="qam-action-btn" id="fullscreenStageBtn">Tela Cheia</button>
+          <button type="button" class="qam-action-btn hud-btn-exit" id="overlayExitGameBtn">Encerrar Jogo</button>
         </div>
 
         <div class="sidebar-block">
-          <h3>🎮 Controles Conectados</h3>
+          <h3>Controles</h3>
           <ul class="controller-slots" id="controllerSlotsList"></ul>
         </div>
 
         <div class="sidebar-block chat-block">
-          <h3>💬 Chat da Partida</h3>
+          <h3>Chat da Sala</h3>
           <div class="chat-messages" id="roomChatMessages"></div>
           <form id="roomChatForm" class="chat-form">
             <input type="text" id="roomChatInput" placeholder="Mensagem..." maxlength="200" />
@@ -290,58 +341,58 @@
     </div>
   </section>
 
-  <!-- SteamOS Quick Access Menu (•••) Modal -->
+  <!-- System Quick Access Drawer (•••) -->
   <dialog id="quickAccessDialog" closedby="any" aria-labelledby="qamTitle" class="console-dialog qam-drawer">
     <div class="qam-content">
       <div class="qam-header">
-        <h2 id="qamTitle">Bazzite Quick Access (•••)</h2>
+        <h2 id="qamTitle">Sistema</h2>
         <button type="button" class="qam-close" data-close-dialog="quickAccessDialog" aria-label="Fechar">✕</button>
       </div>
 
       <div class="qam-section">
         <div class="qam-profile-row">
           <div>
-            <label class="qam-label" for="playerNameInput">Perfil do Jogador</label>
+            <label class="qam-label" for="playerNameInput">Jogador</label>
             <input id="playerNameInput" class="qam-input" type="text" maxlength="20" value="Player 1" />
           </div>
-          <button type="button" class="hud-btn" id="logoutConsoleBtn" title="Bloquear Console">🔒 Sair</button>
+          <button type="button" class="hud-btn" id="logoutConsoleBtn">Encerrar sessão</button>
         </div>
-        <div class="qam-network-pill" id="tailscaleStatusPill">🌐 Rede verificada</div>
+        <div class="qam-network-pill" id="tailscaleStatusPill">Conectado</div>
       </div>
 
       <div class="qam-section">
-        <div class="qam-label">Amigos Online · Convite Direto (Zero Link)</div>
+        <div class="qam-label">Amigos Online</div>
         <div id="onlineFriendsList" class="qam-rooms-list">
-          Nenhum outro jogador online no momento.
+          Nenhum outro jogador online.
         </div>
       </div>
 
       <div class="qam-section">
-        <div class="qam-label">Salas Multiplayer Abertas</div>
+        <div class="qam-label">Salas Abertas</div>
         <div id="qamRoomsList" class="qam-rooms-list"></div>
       </div>
 
       <div class="qam-section">
-        <div class="qam-label">Biblioteca &amp; Cartuchos Locais</div>
+        <div class="qam-label">Cartuchos Locais</div>
         <div class="qam-btn-stack">
           <label class="qam-action-btn" for="instantLocalRomInput">
-            📂 Inserir Cartucho / ROM do Dispositivo
+            Abrir ROM do Dispositivo
           </label>
           <input type="file" id="instantLocalRomInput" class="sr-only" accept=".sfc,.smc,.gba,.gb,.gbc,.bin,.chd,.pbp,.iso,.cso,.z64,.n64,.md,.gen,.zip,.7z" />
 
           <button type="button" class="qam-action-btn" id="openUploadModalBtn">
-            ＋ Instalar Novo Jogo no Console
+            Adicionar Jogo à Biblioteca
           </button>
         </div>
       </div>
     </div>
   </dialog>
 
-  <!-- Modal: Add Custom Game to Library -->
+  <!-- Modal: Add Game to Library -->
   <dialog id="uploadRomDialog" closedby="any" aria-labelledby="uploadDialogTitle" class="console-dialog">
     <form id="uploadRomForm" class="qam-content">
       <div class="qam-header">
-        <h2 id="uploadDialogTitle">Instalar Jogo no Console</h2>
+        <h2 id="uploadDialogTitle">Adicionar Jogo</h2>
         <button type="button" class="qam-close" data-close-dialog="uploadRomDialog" aria-label="Fechar">✕</button>
       </div>
 
@@ -352,73 +403,70 @@
 
       <label class="qam-section">
         <span class="qam-label">Título</span>
-        <input type="text" id="uploadTitleInput" class="qam-input" placeholder="Ex: Bomba Patch" maxlength="80" />
+        <input type="text" id="uploadTitleInput" class="qam-input" placeholder="Título do jogo" maxlength="80" />
       </label>
 
       <label class="qam-section">
-        <span class="qam-label">Arquivo da ROM</span>
+        <span class="qam-label">Arquivo</span>
         <input type="file" id="uploadFileInput" class="qam-input" required />
       </label>
 
       <div id="uploadProgressBox" class="progress-box hidden">
         <div class="progress-bar"><div class="progress-fill" id="uploadProgressFill"></div></div>
-        <span id="uploadProgressText">Instalando...</span>
+        <span id="uploadProgressText">Transferindo...</span>
       </div>
 
       <div class="qam-footer">
         <button type="button" class="hud-btn" data-close-dialog="uploadRomDialog">Cancelar</button>
-        <button type="submit" class="btn-steam-play btn-sm" id="submitUploadBtn">Instalar</button>
+        <button type="submit" class="btn-steam-play btn-sm" id="submitUploadBtn">Confirmar</button>
       </div>
     </form>
   </dialog>
 
-  <!-- Floating Real-Time Direct Party Invite Toast (Zero Links Needed!) -->
+  <!-- Minimalist Console Party Invite Notification -->
   <aside id="partyInviteToast" class="party-invite-toast hidden" role="alert" aria-live="assertive">
-    <div class="invite-toast-glow"></div>
     <div class="invite-toast-header">
-      <span class="invite-badge">⚡ CONVITE DIRETO PARA JOGAR</span>
-      <button type="button" class="invite-dismiss-btn" id="dismissInviteToastBtn" aria-label="Recusar">✕</button>
+      <span class="invite-badge">CONVITE DE PARTIDA</span>
+      <button type="button" class="invite-dismiss-btn" id="dismissInviteToastBtn" aria-label="Ignorar">✕</button>
     </div>
     <div class="invite-toast-title" id="inviteToastTitle">Super Bomberman 4</div>
-    <div class="invite-toast-sub" id="inviteToastSub">Kalopsia chamou você para entrar agora!</div>
+    <div class="invite-toast-sub" id="inviteToastSub">Convite para jogar</div>
     <div class="invite-toast-actions">
       <button type="button" class="btn-netflix-play invite-accept-btn" id="acceptInviteToastBtn">
-        <span>▶ Entrar na Partida</span>
+        <span>Entrar</span>
         <span class="glyph glyph-a">A</span>
       </button>
     </div>
   </aside>
 
-  <!-- Zero-Trust Console Lock Gate (Requires Account Created by Admin) -->
-  <section id="consoleAuthGate" class="console-auth-gate hidden" aria-label="Autenticação do Console">
+  <!-- Console Sign-In Screen (Reflektor / SteamOS Minimalist Identity) -->
+  <section id="consoleAuthGate" class="console-auth-gate hidden" aria-label="Iniciar sessão">
     <div class="auth-gate-card">
       <div class="auth-gate-brand">
-        <span class="netflix-n">N</span>
-        <div>
-          <div class="auth-gate-eyebrow">REDE PRIVADA · TAILSCALE &amp; ZERO-TRUST</div>
-          <h2 class="auth-gate-title">Supersymmetry Console</h2>
+        <svg class="auth-diamond-svg" aria-hidden="true"><use href="#icon-reflektor-diamond"></use></svg>
+        <div class="auth-brand-titles">
+          <span class="auth-wordmark">SUPERSYMMETRY</span>
+          <h2 class="auth-gate-title">Iniciar sessão</h2>
         </div>
       </div>
 
-      <p class="auth-gate-desc">
-        Este console é fechado para convidados autorizados. Entre com o usuário e senha criados pelo Administrador.
-      </p>
-
       <form id="consoleLoginForm" class="auth-gate-form" action="/api/auth/login" method="post">
         <div class="auth-field">
-          <label for="console-username">Usuário</label>
+          <label for="console-username">Conta</label>
           <input
             id="console-username"
             name="username"
             type="text"
             autocomplete="username"
+            autocapitalize="none"
+            autocorrect="off"
+            spellcheck="false"
             required
-            placeholder="Seu usuário do console"
           />
         </div>
 
         <div class="auth-field">
-          <label for="current-password">Senha de Acesso</label>
+          <label for="current-password">Senha</label>
           <div class="auth-pwd-wrap">
             <input
               id="current-password"
@@ -427,24 +475,20 @@
               autocomplete="current-password"
               enterkeyhint="done"
               required
-              placeholder="••••••••••••"
             />
-            <button type="button" class="auth-pwd-toggle" id="toggleConsolePwdBtn" aria-label="Mostrar senha">👁</button>
+            <button type="button" class="auth-pwd-toggle" id="toggleConsolePwdBtn" aria-label="Alternar visibilidade da senha">
+              <svg class="ui-icon-svg" aria-hidden="true"><use href="#icon-eye"></use></svg>
+            </button>
           </div>
         </div>
 
         <div id="consoleAuthError" class="auth-gate-error hidden" role="alert"></div>
 
         <button type="submit" class="btn-netflix-play auth-submit-btn" id="consoleLoginSubmitBtn">
-          <span>Desbloquear Console</span>
+          <span>Iniciar sessão</span>
           <span class="glyph glyph-a">A</span>
         </button>
       </form>
-
-      <div class="auth-gate-footer">
-        <span id="authGateNetworkBadge">🛡️ Criptografia scrypt + Sessão HttpOnly</span>
-        <a href="https://admin.superssimetry.kalopsia.me" class="auth-admin-link">Painel Admin →</a>
-      </div>
     </div>
   </section>
 

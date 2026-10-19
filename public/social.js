@@ -27,11 +27,8 @@
 
   function updateNetworkBadges(network) {
     if (!network) return;
-    const label = network.isTailscaleMesh
-      ? `🛡️ Tailscale Mesh (${network.ip})`
-      : `🌐 Conexão TLS (${network.ip})`;
+    const label = network.isTailscaleMesh ? `Tailscale · ${network.ip}` : `Conectado · ${network.ip}`;
     setElementText('tailscaleStatusPill', label);
-    setElementText('authGateNetworkBadge', label);
   }
 
   function applyAuthenticatedUser(user) {
@@ -76,7 +73,7 @@
         body: JSON.stringify({ username, password })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Acesso negado');
+      if (!res.ok) throw new Error(data.error || 'Conta ou senha incorreta.');
       applyAuthenticatedUser(data.user);
       window.location.reload();
     } catch (err) {
@@ -103,7 +100,7 @@
     const others = socialState.onlinePlayers.filter((p) => p.peerId !== myPeerId);
 
     if (others.length === 0) {
-      list.innerHTML = '<span>Nenhum outro jogador online no momento.</span>';
+      list.innerHTML = '<span>Nenhum outro jogador online.</span>';
       return;
     }
 
@@ -113,10 +110,10 @@
       row.className = 'online-friend-row';
       row.innerHTML = `
         <div class="online-friend-info">
-          <strong>🟢 ${escapeHtml(friend.displayName)}</strong>
-          <span>${escapeHtml(friend.activity || 'No Menu do Console')}</span>
+          <strong>${escapeHtml(friend.displayName)}</strong>
+          <span>${escapeHtml(friend.activity || 'Menu Principal')}</span>
         </div>
-        <button type="button" class="hud-btn">⚡ Convidar</button>
+        <button type="button" class="hud-btn">Convidar</button>
       `;
       row.querySelector('button').addEventListener('click', () => sendDirectPartyInvite(friend.peerId));
       list.appendChild(row);
@@ -171,10 +168,10 @@
     if (!toast) return;
 
     const gameTitle = invite.gameTitle || 'Partida Multiplayer';
-    const fromName = invite.fromName || 'Amigo';
+    const fromName = invite.fromName || 'Jogador';
     const consoleName = invite.consoleName || 'Console';
     setElementText('inviteToastTitle', gameTitle);
-    setElementText('inviteToastSub', `${fromName} convidou você direto para jogar (${consoleName})!`);
+    setElementText('inviteToastSub', `${fromName} convidou você · ${consoleName}`);
     toast.classList.remove('hidden');
 
     if (socialState.onPlayChime) {
@@ -236,7 +233,7 @@
         if (!e.lengthComputable) return;
         const pct = Math.round((e.loaded / e.total) * 100);
         progressFill.style.width = `${pct}%`;
-        progressText.textContent = `Instalando (${pct}%)`;
+        progressText.textContent = `Transferindo (${pct}%)`;
       });
       if (socialState.fetchDeckLibrary) await socialState.fetchDeckLibrary();
       document.getElementById('uploadRomForm').reset();
@@ -249,10 +246,8 @@
 
   function togglePasswordVisibility() {
     const input = document.getElementById('current-password');
-    const btn = document.getElementById('toggleConsolePwdBtn');
     const isPassword = input.type === 'password';
     input.type = isPassword ? 'text' : 'password';
-    btn.textContent = isPassword ? '🙈' : '👁';
   }
 
   function addClickListener(id, fn) {

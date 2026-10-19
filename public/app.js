@@ -315,13 +315,15 @@ function updateHeroSpotlight() {
   document.getElementById('heroConsoleTag').textContent = game.consoleName;
   document.getElementById('heroPlayersTag').textContent =
     game.maxPlayers > 1 ? `Até ${game.maxPlayers} Jogadores` : '1 Jogador';
-  document.getElementById('heroStatusTag').textContent = '99% relevante';
+  document.getElementById('heroStatusTag').textContent = game.installed ? 'Instalado' : 'Pronto';
   document.getElementById('heroTitle').textContent = game.title;
   document.getElementById('heroSubtitle').textContent = game.genre;
   document.getElementById('heroSynopsis').textContent = game.synopsis;
 
   document.getElementById('heroBackdrop').style.backgroundImage = `url("${game.boxartUrl}")`;
   document.getElementById('heroBoxartImg').src = game.boxartUrl;
+  const mirrorImg = document.getElementById('heroBoxartMirrorImg');
+  if (mirrorImg) mirrorImg.src = game.boxartUrl;
   document.getElementById('heroSnapImg').src = game.snapUrl;
 }
 
@@ -398,7 +400,7 @@ function renderRoomsShelf() {
 
   if (state.rooms.length === 0) {
     shelf.classList.add('hidden');
-    qamList.textContent = 'Nenhuma sala aberta no momento. Inicie qualquer jogo para abrir uma sala.';
+    qamList.textContent = 'Nenhuma sala aberta.';
     return;
   }
 
@@ -410,7 +412,7 @@ function renderRoomsShelf() {
       <div>
         <div class="tag-pill tag-system" style="display:inline-block;margin-bottom:3px">${escapeHtml(room.consoleName)}</div>
         <div style="font-weight:800;font-size:0.88rem">${escapeHtml(room.gameTitle)}</div>
-        <div style="font-size:0.72rem;color:var(--steam-muted)">Host: ${escapeHtml(room.hostName)} · ${room.players.length}/4 Controles</div>
+        <div style="font-size:0.72rem;color:var(--steam-muted)">Host: ${escapeHtml(room.hostName)} · ${room.players.length}/4</div>
       </div>
       <button type="button" class="btn-steam-play" style="padding:0.45rem 0.9rem;font-size:0.78rem">Entrar</button>
     `;
@@ -420,7 +422,7 @@ function renderRoomsShelf() {
     const qamBtn = document.createElement('button');
     qamBtn.type = 'button';
     qamBtn.className = 'qam-action-btn';
-    qamBtn.textContent = `🎮 ${room.gameTitle} (${room.players.length}/4) — Entrar`;
+    qamBtn.textContent = `${room.gameTitle} (${room.players.length}/4) — Entrar`;
     qamBtn.addEventListener('click', () => {
       document.getElementById('quickAccessDialog').close();
       joinRoomById(room.id);
@@ -1124,7 +1126,8 @@ function bindUiEvents() {
 
   document.getElementById('toggleUiSoundBtn').addEventListener('click', () => {
     state.uiSoundEnabled = !state.uiSoundEnabled;
-    document.getElementById('uiSoundGlyph').textContent = state.uiSoundEnabled ? '🔊' : '🔇';
+    const label = document.getElementById('uiSoundLabel');
+    if (label) label.textContent = state.uiSoundEnabled ? 'Ativo' : 'Mudo';
   });
 
   const openUpload = () => {

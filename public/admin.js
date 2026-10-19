@@ -56,17 +56,17 @@ function renderActivitySvgChart(buckets) {
   const labelsHtml = buckets
     .map((b, i) => {
       const x = Math.round(bounds.padX + i * stepX);
-      return `<text x="${x}" y="${bounds.height - 2}" fill="#94a3b8" font-size="10" text-anchor="middle">${escapeHtml(b.label)}</text>`;
+      return `<text x="${x}" y="${bounds.height - 2}" fill="#8a909e" font-size="10" text-anchor="middle">${escapeHtml(b.label)}</text>`;
     })
     .join('');
 
   mount.innerHTML = `
     <svg viewBox="0 0 ${bounds.width} ${bounds.height}" preserveAspectRatio="none">
-      <line x1="${bounds.padX}" y1="${bounds.padY}" x2="${bounds.width - bounds.padX}" y2="${bounds.padY}" stroke="rgba(255,255,255,0.07)" />
-      <line x1="${bounds.padX}" y1="${bounds.height / 2}" x2="${bounds.width - bounds.padX}" y2="${bounds.height / 2}" stroke="rgba(255,255,255,0.07)" />
+      <line x1="${bounds.padX}" y1="${bounds.padY}" x2="${bounds.width - bounds.padX}" y2="${bounds.padY}" stroke="rgba(255,255,255,0.06)" />
+      <line x1="${bounds.padX}" y1="${bounds.height / 2}" x2="${bounds.width - bounds.padX}" y2="${bounds.height / 2}" stroke="rgba(255,255,255,0.06)" />
       <line x1="${bounds.padX}" y1="${bounds.height - bounds.padY}" x2="${bounds.width - bounds.padX}" y2="${bounds.height - bounds.padY}" stroke="rgba(255,255,255,0.12)" />
-      <polyline fill="none" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="${loginPts}" />
-      <polyline fill="none" stroke="#46d369" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" points="${matchPts}" />
+      <polyline fill="none" stroke="#72b4d4" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="${loginPts}" />
+      <polyline fill="none" stroke="#e15b4b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="${matchPts}" />
       ${labelsHtml}
     </svg>
   `;
@@ -92,7 +92,7 @@ function renderTopGamesBars(topGames) {
       return `
         <div class="xp-bar-row">
           <div class="xp-bar-head">
-            <span>${escapeHtml(g.title)} <small style="color:#94a3b8">(${escapeHtml(g.consoleName)})</small></span>
+            <span>${escapeHtml(g.title)} <small style="color:#8a909e">(${escapeHtml(g.consoleName)})</small></span>
             <span>${g.count} partidas</span>
           </div>
           <div class="xp-bar-track">
@@ -121,7 +121,7 @@ function renderOnlinePlayersList(onlinePlayers) {
   if (!mount) return;
 
   if (!onlinePlayers || onlinePlayers.length === 0) {
-    mount.innerHTML = `<div class="player-activity-sub">Nenhum jogador com console aberto neste segundo.</div>`;
+    mount.innerHTML = `<div class="player-activity-sub">Nenhum jogador conectado no momento.</div>`;
     return;
   }
 
@@ -129,7 +129,7 @@ function renderOnlinePlayersList(onlinePlayers) {
   onlinePlayers.forEach((p) => {
     const row = document.createElement('div');
     row.className = 'online-player-card';
-    const meshBadge = p.isTailscale ? '🔒 Tailscale' : '🌐 HTTPS';
+    const meshBadge = p.isTailscale ? 'Tailscale' : 'HTTPS';
 
     row.innerHTML = `
       <div class="player-ident">
@@ -140,16 +140,16 @@ function renderOnlinePlayersList(onlinePlayers) {
           <div class="player-activity-sub">${escapeHtml(p.activity)}</div>
         </div>
       </div>
-      <button type="button" class="btn-invite-direct">⚡ Convidar Direto</button>
+      <button type="button" class="btn-invite-direct">Convidar</button>
     `;
 
     const btn = row.querySelector('button');
     btn.addEventListener('click', async () => {
       btn.textContent = 'Enviando...';
       const ok = await sendDirectAdminInvite(p.peerId, p.userId);
-      btn.textContent = ok ? '✓ Convite na Tela!' : 'Falhou';
+      btn.textContent = ok ? 'Convite enviado' : 'Erro';
       setTimeout(() => {
-        btn.textContent = '⚡ Convidar Direto';
+        btn.textContent = 'Convidar';
       }, 2200);
     });
 
@@ -165,7 +165,7 @@ function renderUsersTable(users) {
   users.forEach((u) => {
     const tr = document.createElement('tr');
     const statusHtml = u.online
-      ? `<span class="badge-online">● ${escapeHtml(u.currentActivity)}</span>`
+      ? `<span class="badge-online">Online · ${escapeHtml(u.currentActivity)}</span>`
       : `<span class="badge-offline">Offline</span>`;
 
     const historyHtml =
@@ -174,7 +174,7 @@ function renderUsersTable(users) {
             .slice(0, 4)
             .map((g) => `<span class="history-chip">${escapeHtml(g.gameTitle)}</span>`)
             .join('')
-        : `<span class="player-activity-sub">${escapeHtml(u.lastPlayedGame || 'Sem partidas ainda')}</span>`;
+        : `<span class="player-activity-sub">${escapeHtml(u.lastPlayedGame || 'Sem registros')}</span>`;
 
     const canDelete = u.role !== 'admin';
     tr.innerHTML = `
@@ -183,12 +183,12 @@ function renderUsersTable(users) {
         <div class="player-activity-sub">@${escapeHtml(u.username)} · ${u.role.toUpperCase()}</div>
       </td>
       <td>${statusHtml}</td>
-      <td><code>${escapeHtml(u.tailscaleIp || 'Qualquer IP Autenticado')}</code></td>
+      <td><code>${escapeHtml(u.tailscaleIp || 'Padrão')}</code></td>
       <td><strong>${u.gamesPlayedCount || 0}</strong></td>
       <td><div class="history-chips">${historyHtml}</div></td>
       <td>${escapeHtml(formatShortTime(u.lastLoginAt))}</td>
       <td>
-        ${canDelete ? `<button type="button" class="btn-danger-sm" data-del-user="${escapeHtml(u.id)}">Remover</button>` : '👑 Master'}
+        ${canDelete ? `<button type="button" class="btn-danger-sm" data-del-user="${escapeHtml(u.id)}">Remover</button>` : 'Sistema'}
       </td>
     `;
 
@@ -214,7 +214,7 @@ function renderAuditLogs(logs) {
         <div class="audit-item">
           <div>
             <span class="audit-event ${isDanger ? 'danger' : ''}">${escapeHtml(l.event)}</span>
-            <span> — ${escapeHtml(l.displayName || l.username || 'Anônimo')}: ${escapeHtml(l.detail || '')}</span>
+            <span> — ${escapeHtml(l.displayName || l.username || 'Sistema')}: ${escapeHtml(l.detail || '')}</span>
           </div>
           <span class="player-activity-sub">${escapeHtml(l.ip || '')} · ${escapeHtml(formatShortTime(l.timestamp))}</span>
         </div>
@@ -225,10 +225,10 @@ function renderAuditLogs(logs) {
 
 function updateKpiCounts(summary) {
   document.getElementById('kpiOnlineCount').textContent = String(summary.onlineCount);
-  document.getElementById('kpiRoomsCount').textContent = `${summary.activeRoomsCount} salas ativas no momento`;
+  document.getElementById('kpiRoomsCount').textContent = `${summary.activeRoomsCount} salas em andamento`;
   document.getElementById('kpiMatchesCount').textContent = String(summary.totalMatchesPlayed);
   document.getElementById('kpiUsersCount').textContent = String(summary.totalUsers);
-  document.getElementById('kpiLoginsCount').textContent = `${summary.totalLogins} acessos autenticados`;
+  document.getElementById('kpiLoginsCount').textContent = `${summary.totalLogins} sessões autenticadas`;
   document.getElementById('kpiBlockedCount').textContent = String(summary.blockedIntrusions);
 }
 
@@ -237,15 +237,15 @@ function updateSummaryCards(data) {
 
   const gpuOnline = Boolean(data.gpu && data.gpu.online);
   document.getElementById('kpiGpuStatus').textContent = gpuOnline
-    ? `RTX 3050: ONLINE (${data.gpu.gpuModel})`
+    ? `RTX 3050: Ativa (${data.gpu.gpuModel})`
     : 'RTX 3050: Standby';
 
   const strictMesh = Boolean(data.networkConfig && data.networkConfig.tailscaleLockdown);
   const toggle = document.getElementById('tailscaleLockdownToggle');
   if (toggle) toggle.checked = strictMesh;
   document.getElementById('adminTailscaleBadge').textContent = strictMesh
-    ? '🔒 Tailscale Strict: ATIVO (100.64.0.0/10)'
-    : '🌐 Tailscale Hybrid: Pronto (100.65.233.79)';
+    ? 'Tailscale: Restrito (100.64.0.0/10)'
+    : 'Tailscale: Ativo (100.65.233.79)';
 }
 
 async function loadAdminOverview() {
@@ -293,7 +293,7 @@ function bindLoginAndSecurityEvents() {
     });
     const body = await res.json();
     if (!res.ok) {
-      errEl.textContent = body.error || 'Acesso negado.';
+      errEl.textContent = body.error || 'Conta ou senha incorreta.';
       errEl.classList.remove('hidden');
       return;
     }
@@ -329,11 +329,11 @@ function bindManagementForms() {
     });
     const data = await res.json();
     if (!res.ok) {
-      fb.textContent = data.error || 'Erro ao criar conta.';
+      fb.textContent = data.error || 'Não foi possível criar a conta.';
       return;
     }
 
-    fb.textContent = `✓ Conta @${data.user.username} criada com sucesso!`;
+    fb.textContent = `Conta @${data.user.username} criada.`;
     ev.target.reset();
     await loadAdminOverview();
   });
@@ -358,7 +358,7 @@ function bindManagementForms() {
     });
     const data = await res.json();
     fb.classList.remove('hidden');
-    fb.textContent = res.ok ? '✓ Senha Master redefinida com sucesso!' : data.error || 'Erro';
+    fb.textContent = res.ok ? 'Senha atualizada.' : data.error || 'Erro ao atualizar senha.';
     if (res.ok) ev.target.reset();
   });
 }
