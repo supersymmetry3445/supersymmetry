@@ -1,0 +1,11 @@
+{
+  "name": "Supersymmetry Console",
+  "short_name": "Supersymmetry",
+  "description": "Console Retrô & Cloud Multiplayer para PC e Mobile",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0e141b",
+  "theme_color": "#0e141b",
+  "categories": ["games", "entertainment"]
+}

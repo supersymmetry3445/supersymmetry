@@ -9,6 +9,13 @@ const CATEGORIES = [
   { id: 'psx', label: 'PlayStation' }
 ];
 
+function detectMobileOrTouch() {
+  if (typeof window === 'undefined') return false;
+  const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  const touchPoints = navigator.maxTouchPoints && navigator.maxTouchPoints > 0;
+  return Boolean(coarse || touchPoints);
+}
+
 const state = {
   games: [],
   filteredGames: [],
@@ -25,7 +32,13 @@ const state = {
   mySlot: 1,
   peerConnections: new Map(),
   dataChannels: new Map(),
-  lastPadNavTs: 0
+  lastPadNavTs: 0,
+  touchPadEnabled: detectMobileOrTouch(),
+  gamepadOnlyMode: false,
+  virtualButtons: new Array(16).fill(0),
+  virtualAxes: [0, 0, 0, 0],
+  activePointers: new Map(),
+  dpadPointerId: null
 };
 
 const RTC_CONFIG = {
@@ -34,6 +47,17 @@ const RTC_CONFIG = {
     { urls: 'stun:stun1.l.google.com:19302' }
   ]
 };
+
+function triggerHapticPulse(durationMs = 12) {
+  if (navigator.vibrate) {
+    navigator.vibrate(durationMs);
+    return;
+  }
+  const iosLabel = document.getElementById('iosHapticLabel');
+  if (iosLabel) {
+    iosLabel.click();
+  }
+}
 
 function isClickInsideRect(rect, event) {
   const withinVertical = rect.top <= event.clientY && event.clientY <= rect.top + rect.height;
@@ -177,12 +201,8 @@ function renderCapsulesGrid() {
 
     card.addEventListener('mouseenter', () => setFocusedGameIndex(idx, false));
     card.addEventListener('click', () => {
-      if (state.focusedIndex === idx) {
-        launchGameItem(game);
-      } else {
-        setFocusedGameIndex(idx, false);
-        launchGameItem(game);
-      }
+      setFocusedGameIndex(idx, false);
+      launchGameItem(game);
     });
     grid.appendChild(card);
   });
@@ -231,41 +251,32 @@ async function launchFocusedGame() {
   }
 }
 
+async function ensureCatalogRomOnServer(game) {
+  const res = await fetch(`/api/catalog/${encodeURIComponent(game.slug)}/ensure`, {
+    method: 'POST'
+  });
+  if (!res.ok) throw new Error('Falha ao preparar o jogo');
+  const data = await res.json();
+  game.id = data.rom.id;
+  game.installed = true;
+  return data.rom;
+}
+
 async function launchGameItem(game) {
   const playBtnText = document.getElementById('heroPlayBtnText');
   const prevLabel = playBtnText.textContent;
   playBtnText.textContent = 'CARREGANDO...';
 
   try {
-    let romId = game.id;
-    let core = game.core;
-    let title = game.title;
-    let consoleId = game.consoleId;
-    let consoleName = game.consoleName;
-
-    if (!romId && game.slug) {
-      const res = await fetch(`/api/catalog/${encodeURIComponent(game.slug)}/ensure`, {
-        method: 'POST'
-      });
-      if (!res.ok) throw new Error('Falha ao preparar o jogo');
-      const data = await res.json();
-      romId = data.rom.id;
-      core = data.rom.core;
-      title = data.rom.title;
-      consoleId = data.rom.consoleId;
-      consoleName = data.rom.consoleName;
-      game.id = romId;
-      game.installed = true;
-    }
-
-    mountEmulatorJs(core, `/api/roms/${romId}/file`, title, romId);
+    const resolved = !game.id && game.slug ? await ensureCatalogRomOnServer(game) : game;
+    mountEmulatorJs(resolved.core, `/api/roms/${resolved.id}/file`, resolved.title, resolved.id);
     sendWs({
       type: 'create-room',
       playerName: getPlayerName(),
-      consoleId,
-      consoleName,
-      romId,
-      gameTitle: title,
+      consoleId: resolved.consoleId,
+      consoleName: resolved.consoleName,
+      romId: resolved.id,
+      gameTitle: resolved.title,
       mode: 'wasm-p2p'
     });
   } finally {
@@ -387,6 +398,25 @@ function handleWsMessage(msg) {
   if (handler) handler(msg);
 }
 
+function syncTouchControlsVisibility() {
+  const vpad = document.getElementById('virtualGamepad');
+  const touchBtn = document.getElementById('toggleTouchPadBtn');
+  const padOnlyBtn = document.getElementById('toggleGamepadOnlyBtn');
+  const wrapper = document.getElementById('viewportWrapper');
+  const banner = document.getElementById('controllerOnlyBanner');
+  const slotBadge = document.getElementById('padOnlySlotBadge');
+
+  const showPad = state.touchPadEnabled || state.gamepadOnlyMode;
+  vpad.classList.toggle('hidden', !showPad);
+  touchBtn.classList.toggle('active', showPad);
+  padOnlyBtn.classList.toggle('active', state.gamepadOnlyMode);
+  wrapper.classList.toggle('gamepad-only-mode', state.gamepadOnlyMode);
+  banner.classList.toggle('hidden', !state.gamepadOnlyMode);
+  if (slotBadge) {
+    slotBadge.textContent = `CONTROLE ${state.mySlot || 1} ATIVO`;
+  }
+}
+
 function onRoomJoined(msg) {
   state.activeRoom = msg.room;
   state.mySlot = msg.slot;
@@ -398,6 +428,7 @@ function onRoomJoined(msg) {
   document.getElementById('stageGameTitle').textContent = msg.room.gameTitle;
   document.getElementById('stageRoleBadge').textContent = `Controle ${msg.slot}`;
 
+  syncTouchControlsVisibility();
   renderControllerSlots();
   if (!msg.isHost) {
     setupGuestStreamView();
@@ -429,6 +460,58 @@ function appendChatLine(author, text) {
   box.scrollTop = box.scrollHeight;
 }
 
+function buildEmulatorIframeHtml(core, romUrl, title, saveUrl) {
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    html,body,#game{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;}
+    .ejs_virtual_gamepad_parent{display:none !important;}
+  </style>
+</head>
+<body>
+  <div id="game"></div>
+  <script>
+    window.EJS_player = '#game';
+    window.EJS_core = ${JSON.stringify(core)};
+    window.EJS_gameUrl = ${JSON.stringify(romUrl)};
+    window.EJS_gameName = ${JSON.stringify(title)};
+    window.EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
+    window.EJS_startOnLoaded = true;
+    window.EJS_color = '#1a9fff';
+    window.EJS_VirtualGamepadSettings = [];
+    ${saveUrl ? `window.EJS_loadStateURL = ${JSON.stringify(saveUrl)};` : ''}
+
+    const W3C_TO_RETRO = {0:0, 1:8, 2:1, 3:9, 4:10, 5:11, 6:12, 7:13, 8:2, 9:3, 12:4, 13:5, 14:6, 15:7};
+    const prevBySlot = {};
+
+    window.addEventListener('message', (ev) => {
+      const msg = ev.data;
+      if (!msg || msg.type !== 'supersymmetry-remote-pad') return;
+      const gm = window.EJS_emulator && window.EJS_emulator.gameManager;
+      const sim = gm && (gm.simulateInput || (gm.functions && gm.functions.simulateInput));
+      if (typeof sim !== 'function') return;
+
+      const playerIdx = Math.max(0, Math.min(3, (msg.slot || 1) - 1));
+      const prev = prevBySlot[playerIdx] || new Array(16).fill(0);
+      const next = msg.buttons || [];
+
+      Object.keys(W3C_TO_RETRO).forEach((k) => {
+        const w3cIdx = Number(k);
+        const val = next[w3cIdx] ? 1 : 0;
+        if (prev[w3cIdx] !== val) {
+          sim.call(gm, playerIdx, W3C_TO_RETRO[w3cIdx], val);
+          prev[w3cIdx] = val;
+        }
+      });
+      prevBySlot[playerIdx] = prev;
+    });
+  </script>
+  <script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
+</body>
+</html>`;
+}
+
 function mountEmulatorJs(core, romUrl, title, romId) {
   const mount = document.getElementById('emulatorMount');
   const video = document.getElementById('remoteStreamVideo');
@@ -446,26 +529,7 @@ function mountEmulatorJs(core, romUrl, title, romId) {
   const saveUrl = romId ? `/api/roms/${romId}/save` : '';
   const doc = iframe.contentWindow.document;
   doc.open();
-  doc.write(`<!DOCTYPE html>
-<html>
-<head>
-  <style>html,body,#game{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;}</style>
-</head>
-<body>
-  <div id="game"></div>
-  <script>
-    window.EJS_player = '#game';
-    window.EJS_core = ${JSON.stringify(core)};
-    window.EJS_gameUrl = ${JSON.stringify(romUrl)};
-    window.EJS_gameName = ${JSON.stringify(title)};
-    window.EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
-    window.EJS_startOnLoaded = true;
-    window.EJS_color = '#1a9fff';
-    ${saveUrl ? `window.EJS_loadStateURL = ${JSON.stringify(saveUrl)};` : ''}
-  </script>
-  <script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
-</body>
-</html>`);
+  doc.write(buildEmulatorIframeHtml(core, romUrl, title, saveUrl));
   doc.close();
 }
 
@@ -607,6 +671,29 @@ function forwardRemotePadToEmulator(inputMsg) {
   }, '*');
 }
 
+function sendPadFrameToRoom(buttons, axes) {
+  if (!state.activeRoom) return;
+  const frame = {
+    type: 'pad-input',
+    slot: state.mySlot || 1,
+    buttons,
+    axes,
+    timestamp: Date.now()
+  };
+
+  if (state.isHost) {
+    forwardRemotePadToEmulator(frame);
+    return;
+  }
+
+  const hostChannel = state.dataChannels.get(state.activeRoom.hostPeerId);
+  if (hostChannel && hostChannel.readyState === 'open') {
+    hostChannel.send(JSON.stringify(frame));
+    return;
+  }
+  sendWs(frame);
+}
+
 function joinRoomById(roomId) {
   sendWs({
     type: 'join-room',
@@ -621,6 +708,8 @@ function closeConsoleStage() {
     closePeerConnection(peerId);
   }
   state.activeRoom = null;
+  state.gamepadOnlyMode = false;
+  state.virtualButtons.fill(0);
   document.getElementById('emulatorMount').innerHTML = '';
   document.getElementById('remoteStreamVideo').srcObject = null;
   document.getElementById('consoleStage').classList.add('hidden');
@@ -672,26 +761,197 @@ async function handleRomUploadSubmit(ev) {
   }
 }
 
+/* ==========================================================================
+   Multi-Touch Virtual Gamepad Engine (PointerEvents + setPointerCapture)
+   ========================================================================== */
+function computeDpadVector(rect, clientX, clientY) {
+  const dx = clientX - (rect.left + rect.width / 2);
+  const dy = clientY - (rect.top + rect.height / 2);
+  const dz = rect.width * 0.14;
+  return {
+    dx,
+    dy,
+    dirs: [dy < -dz ? 1 : 0, dy > dz ? 1 : 0, dx < -dz ? 1 : 0, dx > dz ? 1 : 0]
+  };
+}
+
+function applyDpadDirections(dirs) {
+  let changed = false;
+  dirs.forEach((val, idx) => {
+    const slotIdx = 12 + idx;
+    if (state.virtualButtons[slotIdx] !== val) {
+      state.virtualButtons[slotIdx] = val;
+      changed = true;
+    }
+  });
+  state.virtualAxes[0] = dirs[3] - dirs[2];
+  state.virtualAxes[1] = dirs[1] - dirs[0];
+  return changed;
+}
+
+function updateDpadDirectionFromPoint(dpadEl, clientX, clientY) {
+  const rect = dpadEl.getBoundingClientRect();
+  const { dx, dy, dirs } = computeDpadVector(rect, clientX, clientY);
+  const changed = applyDpadDirections(dirs);
+
+  renderDpadVisualState(dpadEl, dx, dy, rect.width * 0.28);
+  if (!changed) return;
+  if (dirs.includes(1)) triggerHapticPulse(8);
+  sendPadFrameToRoom(state.virtualButtons.slice(), state.virtualAxes.slice());
+}
+
+function renderDpadVisualState(dpadEl, dx, dy, maxOffset) {
+  dpadEl.querySelector('[data-dir="up"]').classList.toggle('active', state.virtualButtons[12] === 1);
+  dpadEl.querySelector('[data-dir="down"]').classList.toggle('active', state.virtualButtons[13] === 1);
+  dpadEl.querySelector('[data-dir="left"]').classList.toggle('active', state.virtualButtons[14] === 1);
+  dpadEl.querySelector('[data-dir="right"]').classList.toggle('active', state.virtualButtons[15] === 1);
+
+  const nub = document.getElementById('touchDpadThumb');
+  if (!nub) return;
+  const clampX = Math.max(-maxOffset, Math.min(maxOffset, dx * 0.45));
+  const clampY = Math.max(-maxOffset, Math.min(maxOffset, dy * 0.45));
+  nub.style.transform = `translate(${clampX}px, ${clampY}px)`;
+}
+
+function resetDpadState(dpadEl) {
+  state.dpadPointerId = null;
+  state.virtualButtons[12] = 0;
+  state.virtualButtons[13] = 0;
+  state.virtualButtons[14] = 0;
+  state.virtualButtons[15] = 0;
+  state.virtualAxes[0] = 0;
+  state.virtualAxes[1] = 0;
+  renderDpadVisualState(dpadEl, 0, 0, 0);
+  sendPadFrameToRoom(state.virtualButtons.slice(), state.virtualAxes.slice());
+}
+
+function bindVectorDpadEvents() {
+  const dpadEl = document.getElementById('touchDpad');
+  if (!dpadEl) return;
+
+  dpadEl.addEventListener('pointerdown', (ev) => {
+    ev.preventDefault();
+    state.dpadPointerId = ev.pointerId;
+    if (dpadEl.setPointerCapture) dpadEl.setPointerCapture(ev.pointerId);
+    updateDpadDirectionFromPoint(dpadEl, ev.clientX, ev.clientY);
+  });
+
+  dpadEl.addEventListener('pointermove', (ev) => {
+    if (ev.pointerId !== state.dpadPointerId) return;
+    ev.preventDefault();
+    updateDpadDirectionFromPoint(dpadEl, ev.clientX, ev.clientY);
+  });
+
+  const onRelease = (ev) => {
+    if (ev.pointerId !== state.dpadPointerId) return;
+    ev.preventDefault();
+    resetDpadState(dpadEl);
+  };
+
+  dpadEl.addEventListener('pointerup', onRelease);
+  dpadEl.addEventListener('pointercancel', onRelease);
+}
+
+function detectHitButtonsInCluster(clusterEl, clientX, clientY) {
+  const hits = [];
+  const buttons = clusterEl.querySelectorAll('[data-pad-btn]');
+  buttons.forEach((btn) => {
+    const r = btn.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    const dist = Math.hypot(clientX - cx, clientY - cy);
+    if (dist <= r.width * 0.68) {
+      hits.push(Number(btn.getAttribute('data-pad-btn')));
+    }
+  });
+  return hits;
+}
+
+function syncPointerButtonsToVirtualState() {
+  const activeSet = new Set();
+  for (const btnList of state.activePointers.values()) {
+    btnList.forEach((idx) => activeSet.add(idx));
+  }
+
+  let changed = false;
+  [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].forEach((btnIdx) => {
+    const nextVal = activeSet.has(btnIdx) ? 1 : 0;
+    if (state.virtualButtons[btnIdx] !== nextVal) {
+      state.virtualButtons[btnIdx] = nextVal;
+      changed = true;
+    }
+  });
+
+  document.querySelectorAll('#virtualGamepad [data-pad-btn]').forEach((el) => {
+    const idx = Number(el.getAttribute('data-pad-btn'));
+    el.classList.toggle('active', state.virtualButtons[idx] === 1);
+  });
+
+  if (changed) {
+    sendPadFrameToRoom(state.virtualButtons.slice(), state.virtualAxes.slice());
+  }
+}
+
+function bindMultiTouchButtons() {
+  const cluster = document.getElementById('touchActionCluster');
+  if (cluster) {
+    cluster.addEventListener('pointerdown', (ev) => {
+      ev.preventDefault();
+      if (cluster.setPointerCapture) cluster.setPointerCapture(ev.pointerId);
+      const hits = detectHitButtonsInCluster(cluster, ev.clientX, ev.clientY);
+      if (hits.length > 0) triggerHapticPulse(12);
+      state.activePointers.set(ev.pointerId, hits);
+      syncPointerButtonsToVirtualState();
+    });
+
+    cluster.addEventListener('pointermove', (ev) => {
+      if (!state.activePointers.has(ev.pointerId)) return;
+      ev.preventDefault();
+      const hits = detectHitButtonsInCluster(cluster, ev.clientX, ev.clientY);
+      state.activePointers.set(ev.pointerId, hits);
+      syncPointerButtonsToVirtualState();
+    });
+
+    const releaseClusterPointer = (ev) => {
+      if (!state.activePointers.has(ev.pointerId)) return;
+      ev.preventDefault();
+      state.activePointers.delete(ev.pointerId);
+      syncPointerButtonsToVirtualState();
+    };
+    cluster.addEventListener('pointerup', releaseClusterPointer);
+    cluster.addEventListener('pointercancel', releaseClusterPointer);
+  }
+
+  document.querySelectorAll('.vpad-shoulder-btn, .vpad-meta-btn').forEach((btn) => {
+    const btnIdx = Number(btn.getAttribute('data-pad-btn'));
+    btn.addEventListener('pointerdown', (ev) => {
+      ev.preventDefault();
+      if (btn.setPointerCapture) btn.setPointerCapture(ev.pointerId);
+      triggerHapticPulse(10);
+      state.activePointers.set(ev.pointerId, [btnIdx]);
+      syncPointerButtonsToVirtualState();
+    });
+
+    const releaseBtn = (ev) => {
+      ev.preventDefault();
+      state.activePointers.delete(ev.pointerId);
+      syncPointerButtonsToVirtualState();
+    };
+    btn.addEventListener('pointerup', releaseBtn);
+    btn.addEventListener('pointercancel', releaseBtn);
+  });
+}
+
 function getConnectedGamepads() {
   if (!navigator.getGamepads) return [];
   return Array.from(navigator.getGamepads()).filter(Boolean);
 }
 
-function transmitGuestGamepad(pad) {
+function transmitHardwareGamepad(pad) {
   if (!state.activeRoom || state.isHost) return;
-  const frame = {
-    type: 'pad-input',
-    slot: state.mySlot,
-    buttons: pad.buttons.map((b) => (b.pressed ? 1 : 0)),
-    axes: pad.axes.map((a) => Number(a.toFixed(2))),
-    timestamp: Date.now()
-  };
-  const hostChannel = state.dataChannels.get(state.activeRoom.hostPeerId);
-  if (hostChannel && hostChannel.readyState === 'open') {
-    hostChannel.send(JSON.stringify(frame));
-    return;
-  }
-  sendWs(frame);
+  const buttons = pad.buttons.map((b) => (b.pressed ? 1 : 0));
+  const axes = pad.axes.map((a) => Number(a.toFixed(2)));
+  sendPadFrameToRoom(buttons, axes);
 }
 
 function isPadButtonPressed(pad, index) {
@@ -734,7 +994,7 @@ function pollGamepadsLoop() {
   if (label) label.textContent = String(pads.length);
 
   if (pads.length > 0) {
-    transmitGuestGamepad(pads[0]);
+    transmitHardwareGamepad(pads[0]);
     handleDeckGamepadNavigation(pads[0]);
   }
   requestAnimationFrame(pollGamepadsLoop);
@@ -762,6 +1022,31 @@ function escapeHtml(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function bindStageControlEvents() {
+  document.getElementById('toggleTouchPadBtn').addEventListener('click', () => {
+    state.touchPadEnabled = !state.touchPadEnabled;
+    if (!state.touchPadEnabled) state.gamepadOnlyMode = false;
+    syncTouchControlsVisibility();
+  });
+
+  document.getElementById('toggleGamepadOnlyBtn').addEventListener('click', () => {
+    state.gamepadOnlyMode = !state.gamepadOnlyMode;
+    if (state.gamepadOnlyMode) state.touchPadEnabled = true;
+    syncTouchControlsVisibility();
+  });
+
+  document.getElementById('closeStageBtn').addEventListener('click', closeConsoleStage);
+  document.getElementById('toggleSidebarBtn').addEventListener('click', () => {
+    document.getElementById('ingameSidebar').classList.toggle('hidden');
+    document.getElementById('ingameBody').classList.toggle('sidebar-collapsed');
+  });
+
+  document.getElementById('fullscreenStageBtn').addEventListener('click', () => {
+    const stage = document.getElementById('consoleStage');
+    if (stage.requestFullscreen) stage.requestFullscreen();
+  });
 }
 
 function bindUiEvents() {
@@ -799,15 +1084,9 @@ function bindUiEvents() {
     if (file) launchLocalFileAsHost(file);
   });
 
-  document.getElementById('closeStageBtn').addEventListener('click', closeConsoleStage);
-  document.getElementById('toggleSidebarBtn').addEventListener('click', () => {
-    document.getElementById('ingameSidebar').classList.toggle('hidden');
-    document.querySelector('.ingame-body').classList.toggle('sidebar-collapsed');
-  });
-  document.getElementById('fullscreenStageBtn').addEventListener('click', () => {
-    const wrapper = document.getElementById('viewportWrapper');
-    if (wrapper.requestFullscreen) wrapper.requestFullscreen();
-  });
+  bindStageControlEvents();
+  bindVectorDpadEvents();
+  bindMultiTouchButtons();
 
   document.getElementById('roomChatForm').addEventListener('submit', (ev) => {
     ev.preventDefault();

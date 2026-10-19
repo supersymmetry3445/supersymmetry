@@ -2,11 +2,20 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0e141b" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Supersymmetry" />
+  <link rel="manifest" href="/manifest.webmanifest" />
   <title>Supersymmetry</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
+  <!-- Hidden iOS 18+ WebKit Taptic Engine Switch for Mobile Haptics -->
+  <input type="checkbox" id="iosHapticSwitch" switch class="sr-only" aria-hidden="true" tabindex="-1" />
+  <label for="iosHapticSwitch" id="iosHapticLabel" class="sr-only" aria-hidden="true"></label>
+
   <!-- Dynamic SteamOS Big Art Backdrop -->
   <div class="steamos-backdrop" id="heroBackdrop"></div>
   <div class="steamos-vignette"></div>
@@ -16,7 +25,7 @@
     <div class="topbar-left">
       <div class="search-pill">
         <span aria-hidden="true">🔍</span>
-        <input id="searchInput" type="search" placeholder="Buscar na biblioteca..." autocomplete="off" />
+        <input id="searchInput" type="search" placeholder="Buscar jogo..." autocomplete="off" />
       </div>
 
       <nav class="steamos-tabs" id="consoleTabs" aria-label="Categorias do Console"></nav>
@@ -76,7 +85,7 @@
     <!-- Live Multiplayer Rooms Shelf (Shown automatically when friends have open rooms) -->
     <section class="shelf-section hidden" id="liveRoomsShelf">
       <div class="shelf-header">
-        <h2>🛋️ Salas Abertas Agora — Entre como Controle 2, 3 ou 4</h2>
+        <h2>🛋️ Salas Abertas Agora — Toque para Entrar (PC ou Celular)</h2>
       </div>
       <div class="rooms-row" id="roomsGrid"></div>
     </section>
@@ -91,35 +100,99 @@
     </section>
   </main>
 
-  <!-- Fullscreen In-Game Console Stage -->
+  <!-- Fullscreen In-Game Console Stage (Hybrid PC + Mobile Handheld) -->
   <section class="ingame-stage hidden" id="consoleStage" aria-label="Jogo em Execução">
     <div class="ingame-overlay-bar">
       <div class="ingame-title-box">
         <span class="tag-pill tag-system" id="stageConsoleBadge">SNES</span>
-        <strong id="stageGameTitle">Super Bomberman 4</strong>
+        <strong class="stage-game-title" id="stageGameTitle">Super Bomberman 4</strong>
         <span class="tag-pill tag-players" id="stageRoleBadge">Controle 1</span>
         <span class="room-pill" id="activeRoomCode">Sala #LOCAL</span>
       </div>
 
       <div class="ingame-actions">
-        <button type="button" class="hud-btn" id="toggleSidebarBtn">👥 Controles &amp; Chat</button>
-        <button type="button" class="hud-btn" id="fullscreenStageBtn">⛶ Tela Cheia</button>
-        <button type="button" class="hud-btn hud-btn-exit" id="closeStageBtn">✕ Sair do Jogo</button>
+        <button type="button" class="hud-btn" id="toggleTouchPadBtn" title="Ativar/Ocultar Controles na Tela">
+          🎮 Touch
+        </button>
+        <button type="button" class="hud-btn" id="toggleGamepadOnlyBtn" title="Usar o celular apenas como Controle olhando para a TV/PC">
+          📱 Modo Controle
+        </button>
+        <button type="button" class="hud-btn" id="toggleSidebarBtn" title="Controles e Chat">
+          💬 Chat
+        </button>
+        <button type="button" class="hud-btn" id="fullscreenStageBtn" title="Tela Cheia">
+          ⛶ Tela Cheia
+        </button>
+        <button type="button" class="hud-btn hud-btn-exit" id="closeStageBtn">
+          ✕ Sair
+        </button>
       </div>
     </div>
 
-    <div class="ingame-body">
+    <div class="ingame-body sidebar-collapsed" id="ingameBody">
       <div class="viewport-wrapper" id="viewportWrapper">
-        <div id="emulatorMount" class="emulator-mount"></div>
-        <video id="remoteStreamVideo" class="remote-video hidden" autoplay playsinline></video>
-        <div id="guestOverlayHint" class="guest-overlay-hint hidden">
-          Controle conectado · Use seu Gamepad USB/Bluetooth ou Setas + Z / X / A / S / Enter
+        <div class="stage-screen-area" id="stageScreenArea">
+          <div id="emulatorMount" class="emulator-mount"></div>
+          <video id="remoteStreamVideo" class="remote-video hidden" autoplay playsinline></video>
+          <div id="controllerOnlyBanner" class="controller-only-banner hidden">
+            <div class="controller-only-card">
+              <span class="tag-pill tag-system" id="padOnlySlotBadge">CONTROLE ATIVO</span>
+              <h3>Modo Controle Sem Fio</h3>
+              <p>Seus comandos estão sendo enviados em tempo real para a tela principal da sala.</p>
+            </div>
+          </div>
+          <div id="guestOverlayHint" class="guest-overlay-hint hidden">
+            Conectado em Tempo Real · Use o Controle Touch na tela, Gamepad Bluetooth/USB ou Teclado
+          </div>
+        </div>
+
+        <!-- Universal Multi-Touch Virtual Gamepad (Mobile Portrait, Mobile Landscape & Touch PC) -->
+        <div class="virtual-gamepad hidden" id="virtualGamepad" aria-label="Controle Virtual Multi-Touch">
+          <!-- Shoulder & System Row -->
+          <div class="vpad-top-row">
+            <div class="vpad-shoulders">
+              <button type="button" class="vpad-shoulder-btn" data-pad-btn="6">L2</button>
+              <button type="button" class="vpad-shoulder-btn" data-pad-btn="4">L1</button>
+            </div>
+
+            <div class="vpad-system-pills">
+              <button type="button" class="vpad-meta-btn" data-pad-btn="8">SELECT</button>
+              <button type="button" class="vpad-meta-btn vpad-start-btn" data-pad-btn="9">START</button>
+            </div>
+
+            <div class="vpad-shoulders">
+              <button type="button" class="vpad-shoulder-btn" data-pad-btn="5">R1</button>
+              <button type="button" class="vpad-shoulder-btn" data-pad-btn="7">R2</button>
+            </div>
+          </div>
+
+          <!-- Main Thumb Controls: 8-Way Vector D-Pad (Left) & Multi-Touch Diamond (Right) -->
+          <div class="vpad-main-row">
+            <div class="vpad-left-zone">
+              <div class="vpad-dpad" id="touchDpad" role="application" aria-label="Direcional D-Pad 8 Direções">
+                <span class="dpad-arm dpad-up" data-dir="up">▲</span>
+                <span class="dpad-arm dpad-right" data-dir="right">▶</span>
+                <span class="dpad-arm dpad-down" data-dir="down">▼</span>
+                <span class="dpad-arm dpad-left" data-dir="left">◀</span>
+                <div class="dpad-center-nub" id="touchDpadThumb"></div>
+              </div>
+            </div>
+
+            <div class="vpad-right-zone">
+              <div class="vpad-diamond" id="touchActionCluster" role="application" aria-label="Botões de Ação Y X B A">
+                <button type="button" class="vpad-face-btn vpad-btn-x" data-pad-btn="3">X</button>
+                <button type="button" class="vpad-face-btn vpad-btn-y" data-pad-btn="2">Y</button>
+                <button type="button" class="vpad-face-btn vpad-btn-a" data-pad-btn="1">A</button>
+                <button type="button" class="vpad-face-btn vpad-btn-b" data-pad-btn="0">B</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <aside class="ingame-sidebar" id="ingameSidebar">
+      <aside class="ingame-sidebar hidden" id="ingameSidebar">
         <div class="sidebar-block">
-          <h3>🎮 Controles Conectados</h3>
+          <h3>🎮 Controles na Sala</h3>
           <ul class="controller-slots" id="controllerSlotsList"></ul>
         </div>
 
@@ -149,7 +222,7 @@
       </div>
 
       <div class="qam-section">
-        <div class="qam-label">Salas Multiplayer Ativas</div>
+        <div class="qam-label">Salas Multiplayer Ativas (PC &amp; Celular)</div>
         <div id="qamRoomsList" class="qam-rooms-list"></div>
       </div>
 
@@ -214,17 +287,17 @@
     </div>
 
     <div class="bottom-right">
-      <div class="bottom-prompt">
+      <div class="bottom-prompt desktop-only-prompt">
         <span class="glyph glyph-bumper">L1 / R1</span>
         <span>Plataforma</span>
       </div>
       <button type="button" class="bottom-prompt" id="bottomImportBtn">
         <span class="glyph glyph-y">Y</span>
-        <span>Adicionar Jogo</span>
+        <span>Adicionar</span>
       </button>
       <button type="button" class="bottom-prompt" id="bottomPartyBtn">
         <span class="glyph glyph-x">X</span>
-        <span>Convidar Amigos</span>
+        <span>Salas</span>
       </button>
       <button type="button" class="bottom-prompt" id="bottomPlayBtn">
         <span class="glyph glyph-a">A</span>

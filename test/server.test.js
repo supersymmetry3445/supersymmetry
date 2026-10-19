@@ -44,6 +44,18 @@ test('Supersymmetry API: /api/deck and /api/health return SteamOS library with 2
     assert.ok(deckRes.games.length >= 24);
     assert.ok(deckRes.games.some((g) => g.slug === 'super-bomberman-4' && g.boxartUrl.includes('thumbnails.libretro.com')));
     assert.ok(deckRes.games.some((g) => g.slug === 'pokemon-emerald'));
+
+    const manifestRes = await fetch(`${baseUrl}/manifest.webmanifest`);
+    assert.equal(manifestRes.status, 200);
+    assert.ok(manifestRes.headers.get('content-type').includes('application/manifest+json'));
+    const manifest = await manifestRes.json();
+    assert.equal(manifest.display, 'standalone');
+
+    const htmlText = await fetch(`${baseUrl}/`).then((r) => r.text());
+    assert.ok(htmlText.includes('viewport-fit=cover'));
+    assert.ok(htmlText.includes('id="virtualGamepad"'));
+    assert.ok(htmlText.includes('id="touchDpad"'));
+    assert.ok(htmlText.includes('id="touchActionCluster"'));
   } finally {
     await cleanup();
   }
