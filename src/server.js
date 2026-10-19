@@ -10,6 +10,7 @@ const { StorageManager } = require('./storage');
 const { RoomManager } = require('./rooms');
 const { GpuNodeBridge } = require('./gpu-bridge');
 const { AuthManager, extractClientIp, isTailscaleCgnatIp } = require('./auth');
+const { ProfileManager } = require('./profile');
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -287,11 +288,53 @@ async function handleSocialInviteRoute(req, res, auth, rooms) {
   return sendJsonResponse(res, 200, rooms.sendDirectInvite(sender, body));
 }
 
+async function handlePatchProfileNickname(req, res, sess, { auth, rooms }) {
+  const body = await readJsonBody(req);
+  const cleanName = String(body.displayName || '').trim().slice(0, 28);
+  if (!cleanName) {
+    return sendJsonResponse(res, 400, { error: 'Informe um nome válido.' });
+  }
+  if (!sess) {
+    return sendJsonResponse(res, 200, { user: { id: 'default', displayName: cleanName } });
+  }
+  const updated = await auth.updateUserAccount(sess.user.id, { displayName: cleanName });
+  rooms.updateUserDisplayName(sess.user.id, cleanName);
+  return sendJsonResponse(res, 200, { user: updated });
+}
+
+async function handleProfileRoute(req, res, pathname, deps) {
+  const { auth, storage, rooms, profiles } = deps;
+  const sess = auth.getSessionFromRequest(req);
+  const userObj = sess ? sess.user : { id: 'default', username: 'player', displayName: 'Player 1', role: 'player' };
+  const routeKey = `${req.method || 'GET'} ${pathname}`;
+
+  const handlers = {
+    'GET /api/profile': () =>
+      sendJsonResponse(res, 200, {
+        authenticated: Boolean(sess),
+        ...profiles.getProfilePayload(userObj, storage)
+      }),
+    'PATCH /api/profile': () => handlePatchProfileNickname(req, res, sess, { auth, rooms }),
+    'POST /api/profile': () => handlePatchProfileNickname(req, res, sess, { auth, rooms }),
+    'POST /api/profile/playtime': async () => {
+      const body = await readJsonBody(req);
+      const recorded = await profiles.recordPlaytime({ userId: userObj.id, ...body });
+      return sendJsonResponse(res, 200, { recorded });
+    }
+  };
+
+  if (handlers[routeKey]) {
+    return handlers[routeKey]();
+  }
+  return sendJsonResponse(res, 404, { error: 'Profile route not found' });
+}
+
 async function dispatchDynamicApiRoute(req, res, parsedUrl, deps) {
   const { pathname } = parsedUrl;
-  const { storage, rooms, gpuBridge, auth } = deps;
+  const { storage, gpuBridge, auth, profiles } = deps;
 
   if (pathname.startsWith('/api/auth/')) return handleAuthRoute(req, res, pathname, auth);
+  if (pathname.startsWith('/api/profile')) return handleProfileRoute(req, res, pathname, deps);
   if (pathname.startsWith('/api/admin/')) return handleAdminRoute(req, res, pathname, deps);
   if (pathname.startsWith('/api/gpu/')) return handleGpuMutationRoute(req, res, pathname, gpuBridge);
 
@@ -303,7 +346,16 @@ async function dispatchDynamicApiRoute(req, res, parsedUrl, deps) {
 
   const romMatch = pathname.match(/^\/api\/roms\/([a-f0-9-]+)(?:\/(file|save))?$/i);
   if (romMatch) {
-    return handleRomItemRoute({ req, res, parsedUrl, storage, romId: romMatch[1], subAction: romMatch[2] });
+    return handleRomItemRoute({
+      req,
+      res,
+      parsedUrl,
+      storage,
+      auth,
+      profiles,
+      romId: romMatch[1],
+      subAction: romMatch[2]
+    });
   }
 
   return sendJsonResponse(res, 404, { error: 'API route not found' });
@@ -356,9 +408,11 @@ function createSupersymmetryApp(options = {}) {
   const publicDir = options.publicDir || path.join(__dirname, '..', 'public');
   const storage = new StorageManager(dataDir);
   const auth = new AuthManager(dataDir, { initialAdminPassword: options.initialAdminPassword });
+  const profiles = new ProfileManager(dataDir);
   const rooms = new RoomManager({
     onGameStarted: (info) => {
       auth.recordGameSession(info).catch(() => {});
+      profiles.recordPlaytime({ ...info, seconds: 60, countSession: true }).catch(() => {});
     }
   });
   const gpuBridge = new GpuNodeBridge(options.gpuToken, (gpuStatus) => {
@@ -369,9 +423,10 @@ function createSupersymmetryApp(options = {}) {
   storage.init = async () => {
     await origInit();
     await auth.init();
+    await profiles.init();
   };
 
-  const handleApiRequest = createApiRouter({ storage, rooms, gpuBridge, auth });
+  const handleApiRequest = createApiRouter({ storage, rooms, gpuBridge, auth, profiles });
 
   const server = http.createServer(async (req, res) => {
     try {
@@ -409,7 +464,7 @@ function createSupersymmetryApp(options = {}) {
     ws.on('close', () => rooms.unregisterClient(client));
   });
 
-  return { server, storage, auth, rooms, gpuBridge, wss };
+  return { server, storage, auth, profiles, rooms, gpuBridge, wss };
 }
 
 async function handleRomUpload(req, res, parsedUrl, storage) {
@@ -446,35 +501,48 @@ async function handleRomItemRoute(ctx) {
   }
 
   if (subAction === 'save') {
-    return handleRomSaveRoute(ctx);
+    return handleRomSaveRoute({ ...ctx, rom });
   }
 
   return sendJsonResponse(res, 405, { error: 'Method not allowed' });
 }
 
-async function handleRomSaveRoute({ req, res, parsedUrl, storage, romId }) {
-  const slot = parsedUrl.searchParams.get('slot') || 'default.srm';
-  if (req.method === 'GET') {
-    const saveBuf = await storage.readBatteryOrState(romId, slot);
-    if (!saveBuf) {
-      return sendJsonResponse(res, 404, { error: 'No save file found for this ROM' });
-    }
-    res.writeHead(200, {
-      'Content-Type': 'application/octet-stream',
-      'Content-Length': saveBuf.length,
-      'Cache-Control': 'no-store'
-    });
-    res.end(saveBuf);
-    return;
+async function handleGetRomSave(res, storage, romId, slot) {
+  const saveBuf = await storage.readBatteryOrState(romId, slot);
+  if (!saveBuf) {
+    return sendJsonResponse(res, 404, { error: 'No save file found for this ROM' });
   }
+  res.writeHead(200, {
+    'Content-Type': 'application/octet-stream',
+    'Content-Length': saveBuf.length,
+    'Cache-Control': 'no-store'
+  });
+  res.end(saveBuf);
+}
 
-  if (req.method === 'POST') {
-    const buf = await readRequestBuffer(req, 1024 * 1024 * 32);
-    const saved = await storage.saveBatteryOrState(romId, slot, buf);
-    return sendJsonResponse(res, 200, { saved });
+async function handlePostRomSave(ctx, slot) {
+  const { req, res, storage, auth, profiles, romId, rom } = ctx;
+  const buf = await readRequestBuffer(req, 1024 * 1024 * 32);
+  const saved = await storage.saveBatteryOrState(romId, slot, buf);
+  const sess = auth ? auth.getSessionFromRequest(req) : null;
+  await profiles.recordSaveFile({
+    userId: sess ? sess.user.id : 'default',
+    rom,
+    slotName: slot,
+    sizeBytes: buf.length
+  });
+  return sendJsonResponse(res, 200, { saved });
+}
+
+async function handleRomSaveRoute(ctx) {
+  const slot = ctx.parsedUrl.searchParams.get('slot') || 'default.srm';
+  if (ctx.req.method === 'GET') {
+    return handleGetRomSave(ctx.res, ctx.storage, ctx.romId, slot);
   }
-
-  return sendJsonResponse(res, 405, { error: 'Method not allowed' });
+  if (ctx.req.method === 'POST') {
+    return handlePostRomSave(ctx, slot);
+  }
+  return sendJsonResponse(ctx.res, 405, { error: 'Method not allowed' });
 }
 
 async function handleGpuMutationRoute(req, res, pathname, gpuBridge) {

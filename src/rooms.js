@@ -358,12 +358,28 @@ class RoomManager {
     this.onGameStarted({
       userId: client.userId,
       playerName: client.name,
+      slug: room.slug || null,
+      romId: room.romId || null,
       gameTitle: room.gameTitle,
       consoleName: room.consoleName,
       consoleId: room.consoleId,
       roomId: room.id,
       mode: room.mode
     });
+  }
+
+  updateUserDisplayName(userId, displayName) {
+    if (!userId || !displayName) return;
+    for (const client of this.clients.values()) {
+      if (client.userId === userId) {
+        client.name = displayName;
+        const room = client.roomId ? this.rooms.get(client.roomId) : null;
+        if (room && room.hostPeerId === client.peerId) {
+          room.hostName = displayName;
+        }
+      }
+    }
+    this.broadcastLobbyState();
   }
 
   findMatchingSystemRoom(data) {

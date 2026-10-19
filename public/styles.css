@@ -1496,18 +1496,163 @@ dialog.console-dialog {
   margin: auto;
   width: min(430px, 94vw);
   max-height: 88dvh;
-  background: rgba(16, 24, 35, 0.96);
-  backdrop-filter: blur(24px);
+  background: rgba(11, 13, 19, 0.96);
+  backdrop-filter: blur(26px);
   color: var(--steam-text);
   border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 14px;
+  border-radius: 16px;
   padding: 0;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.9);
+  box-shadow: 0 28px 68px rgba(0, 0, 0, 0.92);
+  overscroll-behavior: contain;
+}
+
+dialog.console-dialog:modal {
+  overscroll-behavior: contain;
 }
 
 dialog.console-dialog::backdrop {
-  background: rgba(0, 0, 0, 0.68);
+  background: rgba(0, 0, 0, 0.72);
   backdrop-filter: blur(8px);
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+dialog.profile-dialog {
+  width: min(680px, 94vw);
+}
+
+.profile-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.profile-account-sub {
+  font-size: 0.74rem;
+  color: var(--steam-muted);
+}
+
+.profile-identity-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.profile-nick-field {
+  flex: 1 1 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.profile-nick-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.profile-nick-row .qam-input {
+  flex: 1;
+}
+
+.profile-feedback {
+  font-size: 0.74rem;
+  color: #34d399;
+}
+
+.profile-metrics-strip {
+  display: flex;
+  gap: 0.65rem;
+}
+
+.profile-metric-pill {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.45rem 0.78rem;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.profile-metric-pill strong {
+  font-size: 0.92rem;
+  color: #f8fafc;
+}
+
+.profile-grid-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.9rem;
+}
+
+.profile-panel {
+  padding: 0.85rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.profile-records-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.48rem;
+  max-height: 240px;
+  overflow-y: auto;
+  font-size: 0.78rem;
+  color: var(--steam-muted);
+}
+
+.profile-record-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.48rem 0.65rem;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.34);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.profile-record-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.profile-record-meta strong {
+  font-size: 0.8rem;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-record-meta span {
+  font-size: 0.7rem;
+  color: var(--steam-muted);
+}
+
+.profile-record-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.profile-dl-link {
+  text-decoration: none;
+}
+
+.qam-profile-actions {
+  display: flex;
+  gap: 0.4rem;
 }
 
 .qam-content {

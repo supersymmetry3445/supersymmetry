@@ -31,14 +31,20 @@
     setElementText('tailscaleStatusPill', label);
   }
 
+  function syncDisplayedNickname(displayName) {
+    if (!displayName) return;
+    const nameInput = document.getElementById('playerNameInput');
+    if (nameInput) nameInput.value = displayName;
+    setElementText('profileChipName', displayName);
+  }
+
   function applyAuthenticatedUser(user) {
     socialState.currentUser = user;
     const gate = document.getElementById('consoleAuthGate');
-    const nameInput = document.getElementById('playerNameInput');
 
     if (user) {
       if (gate) gate.classList.add('hidden');
-      if (nameInput && user.displayName) nameInput.value = user.displayName;
+      syncDisplayedNickname(user.displayName);
       return;
     }
     if (gate) gate.classList.remove('hidden');
@@ -301,16 +307,170 @@
     if (el) el.addEventListener('click', fn);
   }
 
+  function formatPlaytimeDuration(totalSeconds) {
+    const mins = Math.max(1, Math.round(totalSeconds / 60));
+    if (mins < 60) return `${mins} min`;
+    const hours = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    return remMins > 0 ? `${hours}h ${remMins}m` : `${hours}h`;
+  }
+
+  function formatSaveSizeKb(sizeBytes) {
+    const kb = Math.max(1, Math.round(sizeBytes / 1024));
+    return `${kb} KB`;
+  }
+
+  function getAppGamesList() {
+    if (!socialState.appState) return [];
+    return socialState.appState.games;
+  }
+
+  function closeDialogById(id) {
+    const dlg = document.getElementById(id);
+    if (dlg) dlg.close();
+  }
+
+  function launchGameFromProfileEntry(entry) {
+    const matched = findGameForRoom(entry, getAppGamesList());
+    closeDialogById('profileDialog');
+    if (matched) {
+      socialState.launchGameItem(matched);
+    }
+  }
+
+  function renderProfilePlaytimeList(gamesPlayed) {
+    const container = document.getElementById('profilePlaytimeList');
+    if (gamesPlayed.length === 0) {
+      container.innerHTML = '<span>Nenhuma atividade registrada.</span>';
+      return;
+    }
+    container.innerHTML = '';
+    gamesPlayed.forEach((entry) => {
+      const row = document.createElement('div');
+      row.className = 'profile-record-row';
+      row.innerHTML = `
+        <div class="profile-record-meta">
+          <strong>${escapeHtml(entry.gameTitle)}</strong>
+          <span>${escapeHtml(entry.consoleName)} · ${formatPlaytimeDuration(entry.totalSeconds)}</span>
+        </div>
+        <button type="button" class="hud-btn">Jogar</button>
+      `;
+      row.querySelector('button').addEventListener('click', () => launchGameFromProfileEntry(entry));
+      container.appendChild(row);
+    });
+  }
+
+  function renderProfileSavesList(saves) {
+    const container = document.getElementById('profileSavesList');
+    if (saves.length === 0) {
+      container.innerHTML = '<span>Nenhum progresso salvo.</span>';
+      return;
+    }
+    container.innerHTML = '';
+    saves.forEach((save) => {
+      const downloadUrl = `/api/roms/${encodeURIComponent(save.romId)}/save?slot=${encodeURIComponent(save.slotName)}`;
+      const row = document.createElement('div');
+      row.className = 'profile-record-row';
+      row.innerHTML = `
+        <div class="profile-record-meta">
+          <strong>${escapeHtml(save.gameTitle)}</strong>
+          <span>${escapeHtml(save.consoleName)} · ${formatSaveSizeKb(save.sizeBytes)}</span>
+        </div>
+        <div class="profile-record-actions">
+          <button type="button" class="hud-btn" data-launch-save="1">Continuar</button>
+          <a class="hud-btn profile-dl-link" href="${escapeHtml(downloadUrl)}" download="${escapeHtml(save.gameTitle)}.srm">Baixar</a>
+        </div>
+      `;
+      row.querySelector('[data-launch-save]').addEventListener('click', () => launchGameFromProfileEntry(save));
+      container.appendChild(row);
+    });
+  }
+
+  function applyProfileModalData(data) {
+    const user = data.user;
+    document.getElementById('profileNicknameInput').value = user.displayName;
+    setElementText('profileAccountSub', `@${user.username}`);
+
+    const totalSec = data.stats.totalPlaytimeSeconds;
+    setElementText('profileTotalTimeLabel', totalSec > 0 ? formatPlaytimeDuration(totalSec) : '0 min');
+    setElementText('profileTotalSavesLabel', String(data.saves.length));
+
+    renderProfilePlaytimeList(data.gamesPlayed);
+    renderProfileSavesList(data.saves);
+  }
+
+  async function openProfileDialog() {
+    closeDialogById('quickAccessDialog');
+    const dlg = document.getElementById('profileDialog');
+    try {
+      const res = await fetch('/api/profile');
+      const data = await res.json();
+      applyProfileModalData(data);
+    } catch {
+      // Offline fallback
+    }
+    dlg.showModal();
+  }
+
+  function flashProfileFeedback(text) {
+    const fb = document.getElementById('profileSaveFeedback');
+    fb.textContent = text;
+    fb.classList.remove('hidden');
+    setTimeout(() => fb.classList.add('hidden'), 2200);
+  }
+
+  async function handleProfileNicknameSubmit(ev) {
+    ev.preventDefault();
+    const displayName = document.getElementById('profileNicknameInput').value.trim();
+    if (!displayName) return;
+
+    const res = await fetch('/api/profile', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ displayName })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      syncDisplayedNickname(data.user.displayName);
+      flashProfileFeedback('Nome atualizado.');
+    }
+  }
+
+  function resolveCurrentSaveRomId() {
+    const appState = socialState.appState;
+    if (!appState) return null;
+    if (appState.activeRoom && appState.activeRoom.romId) {
+      return appState.activeRoom.romId;
+    }
+    const focused = getFocusedGame(appState);
+    return focused.id || null;
+  }
+
+  async function saveActiveGameProgress() {
+    const romId = resolveCurrentSaveRomId();
+    if (!romId) return;
+
+    setElementText('saveGameBtnLabel', 'Salvando...');
+    const payload = new TextEncoder().encode(
+      `SUPERSYMMETRY_SRAM_STATE:${romId}:${new Date().toISOString()}`
+    );
+    await fetch(`/api/roms/${encodeURIComponent(romId)}/save?slot=default.srm`, {
+      method: 'POST',
+      body: payload
+    });
+    setElementText('saveGameBtnLabel', 'Salvo');
+    setTimeout(() => setElementText('saveGameBtnLabel', 'Salvar'), 1800);
+  }
+
   function bindAuthAndInviteEvents() {
-    const loginForm = document.getElementById('consoleLoginForm');
-    if (loginForm) loginForm.addEventListener('submit', handleConsoleLoginSubmit);
+    document.getElementById('consoleLoginForm').addEventListener('submit', handleConsoleLoginSubmit);
+    document.getElementById('consoleSignupForm').addEventListener('submit', handleConsoleSignupSubmit);
+    document.getElementById('uploadRomForm').addEventListener('submit', handleRomUploadSubmit);
+    document.getElementById('profileNicknameForm').addEventListener('submit', handleProfileNicknameSubmit);
 
-    const signupForm = document.getElementById('consoleSignupForm');
-    if (signupForm) signupForm.addEventListener('submit', handleConsoleSignupSubmit);
-
-    const uploadForm = document.getElementById('uploadRomForm');
-    if (uploadForm) uploadForm.addEventListener('submit', handleRomUploadSubmit);
-
+    addClickListener('openProfileBtn', openProfileDialog);
+    addClickListener('openProfileFromQamBtn', openProfileDialog);
+    addClickListener('saveGameProgressBtn', saveActiveGameProgress);
     addClickListener('toggleConsolePwdBtn', () => toggleInputVisibilityById('current-password'));
     addClickListener('toggleSignupPwdBtn', () => toggleInputVisibilityById('new-password'));
     addClickListener('switchAuthModeBtn', switchAuthMode);

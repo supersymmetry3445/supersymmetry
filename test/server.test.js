@@ -448,5 +448,68 @@ test('Supersymmetry Always-Open System Rooms (Gartic/Fightcade style): seeds SAL
   }
 });
 
+test('Supersymmetry Player Profile: updates nickname, tracks playtime per game, and indexes cloud saves', async () => {
+  const { baseUrl, cleanup } = await startTestApp();
+  try {
+    const sessionCookie = await loginAsMasterAdmin(baseUrl);
+
+    const patchRes = await fetch(`${baseUrl}/api/profile`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Cookie: sessionCookie },
+      body: JSON.stringify({ displayName: 'Reflektor P1' })
+    });
+    assert.equal(patchRes.status, 200);
+    const patchBody = await patchRes.json();
+    assert.equal(patchBody.user.displayName, 'Reflektor P1');
+
+    const playtimeRes = await fetch(`${baseUrl}/api/profile/playtime`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Cookie: sessionCookie },
+      body: JSON.stringify({
+        slug: 'super-bomberman-4',
+        gameTitle: 'Super Bomberman 4',
+        consoleName: 'Super Nintendo',
+        seconds: 1800,
+        countSession: true
+      })
+    });
+    assert.equal(playtimeRes.status, 200);
+
+    const romBytes = Buffer.from('BOMBERMAN_4_PROFILE_SAVE_ROM_TEST');
+    const uploadRes = await fetch(`${baseUrl}/api/roms/upload`, {
+      method: 'POST',
+      headers: {
+        'x-rom-filename': 'Super_Bomberman_4.sfc',
+        'x-rom-title': 'Super Bomberman 4',
+        'x-rom-console': 'snes',
+        Cookie: sessionCookie
+      },
+      body: romBytes
+    });
+    const { rom } = await uploadRes.json();
+
+    const saveBytes = Buffer.from('SRAM_CHECKPOINT_WORLD_3_BOSS');
+    const saveRes = await fetch(`${baseUrl}/api/roms/${rom.id}/save?slot=default.srm`, {
+      method: 'POST',
+      headers: { Cookie: sessionCookie },
+      body: saveBytes
+    });
+    assert.equal(saveRes.status, 200);
+
+    const profileRes = await fetch(`${baseUrl}/api/profile`, {
+      headers: { Cookie: sessionCookie }
+    });
+    assert.equal(profileRes.status, 200);
+    const profile = await profileRes.json();
+    assert.equal(profile.user.displayName, 'Reflektor P1');
+    assert.ok(profile.stats.totalPlaytimeSeconds >= 1800);
+    assert.ok(profile.gamesPlayed.some((g) => g.gameTitle === 'Super Bomberman 4' && g.totalSeconds >= 1800));
+    assert.ok(profile.saves.some((s) => s.romId === rom.id && s.sizeBytes === saveBytes.length));
+  } finally {
+    await cleanup();
+  }
+});
+
+
 
 

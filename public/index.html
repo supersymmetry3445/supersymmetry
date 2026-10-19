@@ -69,6 +69,10 @@
         <path d="M2 12s3.8-6.5 10-6.5S22 12 22 12s-3.8 6.5-10 6.5S2 12 2 12z" fill="none" stroke="currentColor" stroke-width="1.6" />
         <circle cx="12" cy="12" r="2.8" fill="none" stroke="currentColor" stroke-width="1.6" />
       </symbol>
+      <symbol id="icon-user" viewBox="0 0 24 24">
+        <circle cx="12" cy="8" r="3.6" fill="none" stroke="currentColor" stroke-width="1.6" />
+        <path d="M4.5 19.5c0-3.4 3.4-5.5 7.5-5.5s7.5 2.1 7.5 5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+      </symbol>
     </defs>
   </svg>
 
@@ -100,6 +104,11 @@
         <button type="button" class="status-chip" id="openRoomsDrawerBtn" title="Salas Ativas">
           <svg class="ui-icon-svg" aria-hidden="true"><use href="#icon-rooms"></use></svg>
           <span id="roomsCountBadge">Salas (0)</span>
+        </button>
+
+        <button type="button" class="status-chip profile-chip" id="openProfileBtn" title="Perfil">
+          <svg class="ui-icon-svg" aria-hidden="true"><use href="#icon-user"></use></svg>
+          <span id="profileChipName">Perfil</span>
         </button>
 
         <div class="status-chip" id="gamepadStatusChip" title="Controles Conectados">
@@ -237,6 +246,10 @@
         <span class="tag-pill tag-players" id="stageRoleBadge">P1</span>
       </button>
 
+      <button type="button" class="steam-guide-pill" id="saveGameProgressBtn" title="Salvar Progresso">
+        <span id="saveGameBtnLabel">Salvar</span>
+      </button>
+
       <button type="button" class="steam-guide-pill" id="toggleTouchPadBtn" title="Controles na Tela">
         Touch
       </button>
@@ -355,7 +368,10 @@
             <label class="qam-label" for="playerNameInput">Jogador</label>
             <input id="playerNameInput" class="qam-input" type="text" maxlength="20" value="Player 1" />
           </div>
-          <button type="button" class="hud-btn" id="logoutConsoleBtn">Encerrar sessão</button>
+          <div class="qam-profile-actions">
+            <button type="button" class="hud-btn" id="openProfileFromQamBtn">Perfil</button>
+            <button type="button" class="hud-btn" id="logoutConsoleBtn">Sair</button>
+          </div>
         </div>
         <div class="qam-network-pill" id="tailscaleStatusPill">Conectado</div>
       </div>
@@ -384,6 +400,67 @@
             Adicionar Jogo à Biblioteca
           </button>
         </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Player Profile Dialog (Nickname, Playtime & Cloud Saves) -->
+  <dialog id="profileDialog" closedby="any" aria-labelledby="profileDialogTitle" class="console-dialog profile-dialog">
+    <div class="qam-content profile-modal-body">
+      <div class="qam-header profile-modal-header">
+        <div class="profile-brand-row">
+          <svg class="reflektor-emblem-svg" aria-hidden="true"><use href="#icon-reflektor-diamond"></use></svg>
+          <div>
+            <h2 id="profileDialogTitle">Perfil</h2>
+            <span class="profile-account-sub" id="profileAccountSub">@jogador</span>
+          </div>
+        </div>
+        <button type="button" class="qam-close" data-close-dialog="profileDialog" aria-label="Fechar">✕</button>
+      </div>
+
+      <form id="profileNicknameForm" class="profile-identity-box">
+        <div class="profile-nick-field">
+          <label class="qam-label" for="profileNicknameInput">Nome de exibição</label>
+          <div class="profile-nick-row">
+            <input
+              id="profileNicknameInput"
+              class="qam-input"
+              type="text"
+              maxlength="28"
+              placeholder="Seu nome no console"
+              required
+            />
+            <button type="submit" class="btn-steam-play btn-sm" id="saveProfileNicknameBtn">Salvar</button>
+          </div>
+          <span id="profileSaveFeedback" class="profile-feedback hidden" role="status"></span>
+        </div>
+
+        <div class="profile-metrics-strip">
+          <div class="profile-metric-pill">
+            <span class="qam-label">Tempo de jogo</span>
+            <strong id="profileTotalTimeLabel">0 min</strong>
+          </div>
+          <div class="profile-metric-pill">
+            <span class="qam-label">Dados salvos</span>
+            <strong id="profileTotalSavesLabel">0</strong>
+          </div>
+        </div>
+      </form>
+
+      <div class="profile-grid-columns">
+        <section class="qam-section profile-panel">
+          <div class="qam-label">Tempo jogado por título</div>
+          <div id="profilePlaytimeList" class="profile-records-list">
+            <span>Nenhuma atividade registrada.</span>
+          </div>
+        </section>
+
+        <section class="qam-section profile-panel">
+          <div class="qam-label">Dados salvos</div>
+          <div id="profileSavesList" class="profile-records-list">
+            <span>Nenhum progresso salvo.</span>
+          </div>
+        </section>
       </div>
     </div>
   </dialog>
