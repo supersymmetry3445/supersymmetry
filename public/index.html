@@ -3,201 +3,235 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Supersymmetry · Hybrid Retro &amp; RTX 3050 Web Console</title>
+  <title>Supersymmetry</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <div class="brand-logo" aria-hidden="true">🌌</div>
-      <div>
-        <div class="brand-title">SUPERSYMMETRY</div>
-        <div class="brand-subtitle">Hybrid Retro Web Console &amp; RTX 3050 Cloud Deck</div>
+  <!-- Dynamic SteamOS Big Art Backdrop -->
+  <div class="steamos-backdrop" id="heroBackdrop"></div>
+  <div class="steamos-vignette"></div>
+
+  <!-- Top SteamOS System Bar -->
+  <header class="steamos-topbar">
+    <div class="topbar-left">
+      <div class="search-pill">
+        <span aria-hidden="true">🔍</span>
+        <input id="searchInput" type="search" placeholder="Buscar na biblioteca..." autocomplete="off" />
       </div>
+
+      <nav class="steamos-tabs" id="consoleTabs" aria-label="Categorias do Console"></nav>
     </div>
 
-    <div class="telemetry-bar">
-      <div class="pill pill-vps" id="vpsTelemetryPill" title="Consumo real do container na VPS (Coolify Project b0ialzsu5xdxdjl3ws7ygbl9)">
-        <span class="dot dot-online"></span>
-        <span id="vpsRamLabel">VPS: ~42 MB RAM · P2P</span>
-      </div>
-
-      <button type="button" class="pill pill-gpu" id="gpuStatusBtn" title="Clique para ver o comando do konsole da sua RTX 3050">
-        <span class="dot dot-offline" id="gpuDot"></span>
-        <span id="gpuStatusLabel">RTX 3050: Standby (0W)</span>
+    <div class="topbar-right">
+      <button type="button" class="status-chip" id="openRoomsDrawerBtn" title="Salas Multiplayer e Amigos">
+        <span>👥</span>
+        <span id="roomsCountBadge">Salas (0)</span>
       </button>
 
-      <div class="pill pill-pad" id="gamepadPill" title="Conecte um controle USB ou Bluetooth e pressione qualquer botão">
+      <div class="status-chip" id="gamepadStatusChip" title="Controles Conectados">
         <span>🎮</span>
-        <span id="gamepadCountLabel">0 Controles USB/BT</span>
+        <span id="gamepadCountLabel">0</span>
       </div>
-    </div>
 
-    <div class="user-actions">
-      <label class="nickname-box" for="playerNameInput">
-        <span>Jogador:</span>
-        <input id="playerNameInput" type="text" maxlength="20" placeholder="Seu Nick" value="Player1" />
-      </label>
-      <button type="button" class="btn btn-secondary" id="openGpuModalBtn">⚡ PS2 / RTX 3050</button>
-      <button type="button" class="btn btn-primary" id="openUploadModalBtn">＋ Adicionar ROM</button>
+      <button type="button" class="status-chip qam-btn" id="openQuickMenuBtn" title="Menu Rápido (•••)">
+        <span>•••</span>
+      </button>
+
+      <div class="system-clock" id="systemClock">00:00</div>
     </div>
   </header>
 
-  <main class="console-shell">
-    <!-- Console Filter Tabs -->
-    <nav class="console-tabs" id="consoleTabs" aria-label="Sistemas de Videogame"></nav>
-
-    <!-- Active Console / Multiplayer Stage (Hidden until a game or room is started) -->
-    <section class="console-stage hidden" id="consoleStage" aria-label="Tela do Console Ativo">
-      <div class="stage-header">
-        <div class="stage-title-group">
-          <span class="badge badge-accent" id="stageConsoleBadge">SNES</span>
-          <h2 id="stageGameTitle">Super Bomberman</h2>
-          <span class="badge badge-slot" id="stageRoleBadge">Controle 1 (Host)</span>
+  <!-- Main SteamOS Home / Library View -->
+  <main class="steamos-main" id="homeView">
+    <!-- Hero Spotlight for Currently Focused Game -->
+    <section class="steamos-hero" id="heroSection" aria-label="Jogo em Destaque">
+      <div class="hero-info">
+        <div class="hero-tags">
+          <span class="tag-pill tag-system" id="heroConsoleTag">SUPER NINTENDO</span>
+          <span class="tag-pill tag-players" id="heroPlayersTag">ATÉ 4 JOGADORES</span>
+          <span class="tag-pill tag-verified" id="heroStatusTag">PRONTO PARA JOGAR</span>
         </div>
-        <div class="stage-controls">
-          <button type="button" class="btn btn-sm btn-secondary" id="syncSaveBtn" title="Sincronizar Save State / SRAM na VPS">💾 Salvar na Nuvem</button>
-          <button type="button" class="btn btn-sm btn-secondary" id="fullscreenStageBtn">⛶ Tela Cheia</button>
-          <button type="button" class="btn btn-sm btn-danger" id="closeStageBtn">✕ Encerrar Sessão</button>
+
+        <h1 class="hero-title" id="heroTitle">Super Bomberman 4</h1>
+        <p class="hero-subtitle" id="heroSubtitle">Party / Battle 4 Jogadores</p>
+
+        <div class="hero-actions">
+          <button type="button" class="btn-steam-play" id="heroPlayBtn">
+            <span class="glyph glyph-a">A</span>
+            <span id="heroPlayBtnText">▶ JOGAR</span>
+          </button>
+
+          <button type="button" class="btn-steam-action" id="heroPartyBtn">
+            <span class="glyph glyph-x">X</span>
+            <span>Convidar Amigos (4P)</span>
+          </button>
         </div>
       </div>
 
-      <div class="stage-grid">
-        <div class="viewport-wrapper" id="viewportWrapper">
-          <!-- Host EmulatorJS Iframe or Guest WebRTC Video or RTX 3050 Stream -->
-          <div id="emulatorMount" class="emulator-mount"></div>
-          <video id="remoteStreamVideo" class="remote-video hidden" autoplay playsinline></video>
-          <div id="guestOverlayHint" class="guest-overlay-hint hidden">
-            Conectado via WebRTC P2P · Use seu Controle USB/Bluetooth ou Setas + Z/X/A/S/Enter/Shift
-          </div>
-        </div>
-
-        <aside class="room-sidebar">
-          <div class="sidebar-card">
-            <h3>🛋️ Sofá Virtual (4 Controles)</h3>
-            <p class="room-code-line">Sala: <strong id="activeRoomCode">LOCAL</strong></p>
-            <ul class="controller-slots" id="controllerSlotsList"></ul>
-          </div>
-
-          <div class="sidebar-card chat-card">
-            <h3>💬 Chat da Sala &amp; Ping</h3>
-            <div class="chat-messages" id="roomChatMessages"></div>
-            <form id="roomChatForm" class="chat-form">
-              <input type="text" id="roomChatInput" placeholder="Mensagem para a sala..." maxlength="200" />
-              <button type="submit" class="btn btn-sm btn-primary">Enviar</button>
-            </form>
-          </div>
-        </aside>
+      <div class="hero-preview-frame">
+        <img id="heroSnapImg" src="" alt="Preview do jogo" loading="eager" />
       </div>
     </section>
 
-    <!-- Multiplayer Rooms Lobby -->
-    <section class="section-block" id="lobbySection">
-      <div class="section-header">
-        <div>
-          <h2>🛋️ Salas Multiplayer Abertas (Sofá Virtual P2P)</h2>
-          <p class="section-desc">Entre na sala de um amigo com 1 clique para assumir o Controle 2, 3 ou 4 direto pelo navegador.</p>
-        </div>
-        <button type="button" class="btn btn-secondary" id="createQuickRoomBtn">＋ Criar Sala Rápida</button>
+    <!-- Live Multiplayer Rooms Shelf (Shown automatically when friends have open rooms) -->
+    <section class="shelf-section hidden" id="liveRoomsShelf">
+      <div class="shelf-header">
+        <h2>🛋️ Salas Abertas Agora — Entre como Controle 2, 3 ou 4</h2>
       </div>
-      <div class="rooms-grid" id="roomsGrid"></div>
+      <div class="rooms-row" id="roomsGrid"></div>
     </section>
 
-    <!-- ROM Library & Local Instant Boot -->
-    <section class="section-block">
-      <div class="section-header">
-        <div>
-          <h2 id="libraryHeading">🕹️ Biblioteca do Console</h2>
-          <p class="section-desc" id="librarySubheading">
-            ROMs salvas na VPS (<code>/data/roms</code>) ficam disponíveis 24/7 para você e seus amigos com Cloud Save automático.
-          </p>
-        </div>
-        <div class="header-btn-group">
-          <label class="btn btn-secondary file-label-btn" for="instantLocalRomInput">
-            📂 Rodar ROM do PC (Sem Upload)
-          </label>
-          <input type="file" id="instantLocalRomInput" class="sr-only" accept=".sfc,.smc,.gba,.gb,.gbc,.bin,.chd,.pbp,.iso,.cso,.z64,.n64,.md,.gen,.zip" />
-          <button type="button" class="btn btn-primary" id="openUploadModalBtn2">＋ Subir ROM para a VPS</button>
-        </div>
+    <!-- Capsule Art Shelf -->
+    <section class="shelf-section">
+      <div class="shelf-header">
+        <h2 id="shelfTitle">Biblioteca de Jogos</h2>
+        <span class="shelf-count" id="shelfCountLabel">24 jogos</span>
       </div>
-
-      <div class="roms-grid" id="romsGrid"></div>
+      <div class="capsules-grid" id="capsulesGrid" role="listbox" aria-label="Jogos Disponíveis"></div>
     </section>
   </main>
 
-  <!-- Modal: Upload ROM to VPS -->
-  <dialog id="uploadRomDialog" closedby="any" aria-labelledby="uploadDialogTitle" class="console-dialog">
-    <form id="uploadRomForm" class="dialog-content">
-      <div class="dialog-header">
-        <h2 id="uploadDialogTitle">＋ Adicionar Jogo à Biblioteca da VPS</h2>
-        <button type="button" class="icon-close" data-close-dialog="uploadRomDialog" aria-label="Fechar">✕</button>
+  <!-- Fullscreen In-Game Console Stage -->
+  <section class="ingame-stage hidden" id="consoleStage" aria-label="Jogo em Execução">
+    <div class="ingame-overlay-bar">
+      <div class="ingame-title-box">
+        <span class="tag-pill tag-system" id="stageConsoleBadge">SNES</span>
+        <strong id="stageGameTitle">Super Bomberman 4</strong>
+        <span class="tag-pill tag-players" id="stageRoleBadge">Controle 1</span>
+        <span class="room-pill" id="activeRoomCode">Sala #LOCAL</span>
       </div>
-      <p class="dialog-desc">
-        O arquivo será salvo no volume persistente do projeto <strong>Supersymmetry</strong> com suporte a streaming HTTP 206 e saves automáticos.
-      </p>
 
-      <label class="field-label">
-        <span>Sistema / Console</span>
-        <select id="uploadConsoleSelect" required></select>
+      <div class="ingame-actions">
+        <button type="button" class="hud-btn" id="toggleSidebarBtn">👥 Controles &amp; Chat</button>
+        <button type="button" class="hud-btn" id="fullscreenStageBtn">⛶ Tela Cheia</button>
+        <button type="button" class="hud-btn hud-btn-exit" id="closeStageBtn">✕ Sair do Jogo</button>
+      </div>
+    </div>
+
+    <div class="ingame-body">
+      <div class="viewport-wrapper" id="viewportWrapper">
+        <div id="emulatorMount" class="emulator-mount"></div>
+        <video id="remoteStreamVideo" class="remote-video hidden" autoplay playsinline></video>
+        <div id="guestOverlayHint" class="guest-overlay-hint hidden">
+          Controle conectado · Use seu Gamepad USB/Bluetooth ou Setas + Z / X / A / S / Enter
+        </div>
+      </div>
+
+      <aside class="ingame-sidebar" id="ingameSidebar">
+        <div class="sidebar-block">
+          <h3>🎮 Controles Conectados</h3>
+          <ul class="controller-slots" id="controllerSlotsList"></ul>
+        </div>
+
+        <div class="sidebar-block chat-block">
+          <h3>💬 Chat da Partida</h3>
+          <div class="chat-messages" id="roomChatMessages"></div>
+          <form id="roomChatForm" class="chat-form">
+            <input type="text" id="roomChatInput" placeholder="Enviar mensagem..." maxlength="200" />
+            <button type="submit" class="hud-btn">Enviar</button>
+          </form>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- SteamOS Quick Access Menu (•••) Modal -->
+  <dialog id="quickAccessDialog" closedby="any" aria-labelledby="qamTitle" class="console-dialog qam-drawer">
+    <div class="qam-content">
+      <div class="qam-header">
+        <h2 id="qamTitle">Menu Rápido</h2>
+        <button type="button" class="qam-close" data-close-dialog="quickAccessDialog" aria-label="Fechar">✕</button>
+      </div>
+
+      <div class="qam-section">
+        <label class="qam-label" for="playerNameInput">Seu Nome no Console</label>
+        <input id="playerNameInput" class="qam-input" type="text" maxlength="20" value="Player 1" />
+      </div>
+
+      <div class="qam-section">
+        <div class="qam-label">Salas Multiplayer Ativas</div>
+        <div id="qamRoomsList" class="qam-rooms-list"></div>
+      </div>
+
+      <div class="qam-section">
+        <div class="qam-label">Adicionar Jogo Personalizado</div>
+        <div class="qam-btn-stack">
+          <label class="qam-action-btn" for="instantLocalRomInput">
+            📂 Abrir Jogo do Dispositivo Agora
+          </label>
+          <input type="file" id="instantLocalRomInput" class="sr-only" accept=".sfc,.smc,.gba,.gb,.gbc,.bin,.chd,.pbp,.iso,.cso,.z64,.n64,.md,.gen,.zip,.7z" />
+
+          <button type="button" class="qam-action-btn" id="openUploadModalBtn">
+            ＋ Salvar Novo Jogo na Biblioteca
+          </button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Modal: Add Custom Game to Library -->
+  <dialog id="uploadRomDialog" closedby="any" aria-labelledby="uploadDialogTitle" class="console-dialog">
+    <form id="uploadRomForm" class="qam-content">
+      <div class="qam-header">
+        <h2 id="uploadDialogTitle">Adicionar Jogo à Biblioteca</h2>
+        <button type="button" class="qam-close" data-close-dialog="uploadRomDialog" aria-label="Fechar">✕</button>
+      </div>
+
+      <label class="qam-section">
+        <span class="qam-label">Plataforma</span>
+        <select id="uploadConsoleSelect" class="qam-input" required></select>
       </label>
 
-      <label class="field-label">
-        <span>Título do Jogo (opcional)</span>
-        <input type="text" id="uploadTitleInput" placeholder="Ex: Super Bomberman 4 (PT-BR)" maxlength="80" />
+      <label class="qam-section">
+        <span class="qam-label">Nome do Jogo</span>
+        <input type="text" id="uploadTitleInput" class="qam-input" placeholder="Ex: Bomba Patch" maxlength="80" />
       </label>
 
-      <label class="field-label">
-        <span>Arquivo da ROM (<code>.sfc</code>, <code>.gba</code>, <code>.bin</code>, <code>.chd</code>, <code>.cso</code>, <code>.z64</code>, <code>.md</code>, <code>.zip</code>)</span>
-        <input type="file" id="uploadFileInput" required />
+      <label class="qam-section">
+        <span class="qam-label">Arquivo do Jogo</span>
+        <input type="file" id="uploadFileInput" class="qam-input" required />
       </label>
 
       <div id="uploadProgressBox" class="progress-box hidden">
         <div class="progress-bar"><div class="progress-fill" id="uploadProgressFill"></div></div>
-        <span id="uploadProgressText">Enviando...</span>
+        <span id="uploadProgressText">Adicionando...</span>
       </div>
 
-      <div class="dialog-actions">
-        <button type="button" class="btn btn-secondary" data-close-dialog="uploadRomDialog">Cancelar</button>
-        <button type="submit" class="btn btn-primary" id="submitUploadBtn">Enviar para a VPS</button>
+      <div class="qam-footer">
+        <button type="button" class="hud-btn" data-close-dialog="uploadRomDialog">Cancelar</button>
+        <button type="submit" class="btn-steam-play btn-sm" id="submitUploadBtn">Salvar na Biblioteca</button>
       </div>
     </form>
   </dialog>
 
-  <!-- Modal: On-Demand Local RTX 3050 GPU Node (PlayStation 2 / Bomba Patch) -->
-  <dialog id="gpuNodeDialog" closedby="any" aria-labelledby="gpuDialogTitle" class="console-dialog">
-    <div class="dialog-content">
-      <div class="dialog-header">
-        <h2 id="gpuDialogTitle">⚡ Nó Híbrido GPU Local · NVIDIA GeForce RTX 3050 6GB</h2>
-        <button type="button" class="icon-close" data-close-dialog="gpuNodeDialog" aria-label="Fechar">✕</button>
-      </div>
-
-      <div class="gpu-status-banner" id="gpuModalBanner">
-        <div class="gpu-banner-title" id="gpuModalStateText">Status: OFFLINE (0W consumidos no seu PC)</div>
-        <div class="gpu-banner-sub" id="gpuModalMetricsText">
-          Sua RTX 3050 fica 100% desligada até você disparar o comando no seu konsole.
-        </div>
-      </div>
-
-      <div class="konsole-guide">
-        <h3>1. Como ligar o PS2 (Bomba Patch) pelo seu <code>konsole</code>:</h3>
-        <p>Abra o terminal na sua máquina Linux local e rode:</p>
-        <div class="code-copy-row">
-          <code id="konsoleStartCmd">./bin/supersymmetry-gpu start</code>
-          <button type="button" class="btn btn-sm btn-secondary" id="copyKonsoleCmdBtn">Copiar</button>
-        </div>
-
-        <h3>2. Como desligar quando terminar de jogar:</h3>
-        <div class="code-copy-row">
-          <code>./bin/supersymmetry-gpu stop</code>
-        </div>
-      </div>
-
-      <div class="dialog-actions">
-        <button type="button" class="btn btn-secondary" data-close-dialog="gpuNodeDialog">Fechar</button>
-        <button type="button" class="btn btn-primary hidden" id="launchGpuStreamBtn">▶ Entrar no Stream da RTX 3050</button>
-      </div>
+  <!-- Persistent Steam Deck Bottom Bar -->
+  <footer class="steamos-bottombar">
+    <div class="bottom-left">
+      <button type="button" class="bottom-prompt" id="bottomMenuBtn">
+        <span class="glyph glyph-steam">STEAM</span>
+        <span>Menu</span>
+      </button>
     </div>
-  </dialog>
+
+    <div class="bottom-right">
+      <div class="bottom-prompt">
+        <span class="glyph glyph-bumper">L1 / R1</span>
+        <span>Plataforma</span>
+      </div>
+      <button type="button" class="bottom-prompt" id="bottomImportBtn">
+        <span class="glyph glyph-y">Y</span>
+        <span>Adicionar Jogo</span>
+      </button>
+      <button type="button" class="bottom-prompt" id="bottomPartyBtn">
+        <span class="glyph glyph-x">X</span>
+        <span>Convidar Amigos</span>
+      </button>
+      <button type="button" class="bottom-prompt" id="bottomPlayBtn">
+        <span class="glyph glyph-a">A</span>
+        <span>Jogar</span>
+      </button>
+    </div>
+  </footer>
 
   <script src="/app.js"></script>
 </body>

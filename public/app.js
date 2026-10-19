@@ -1,20 +1,31 @@
 'use strict';
 
+const CATEGORIES = [
+  { id: 'all', label: 'Início' },
+  { id: 'multiplayer', label: 'Multiplayer (2–4P)' },
+  { id: 'snes', label: 'Super Nintendo' },
+  { id: 'gba', label: 'Game Boy Advance' },
+  { id: 'segaMD', label: 'Mega Drive' },
+  { id: 'psx', label: 'PlayStation' }
+];
+
 const state = {
+  games: [],
+  filteredGames: [],
+  focusedIndex: 0,
+  selectedCategory: 'all',
+  searchQuery: '',
   consoles: [],
-  selectedConsole: 'all',
-  roms: [],
   rooms: [],
   gpu: null,
   peerId: null,
   ws: null,
   activeRoom: null,
-  activeRom: null,
   isHost: false,
   mySlot: 1,
   peerConnections: new Map(),
   dataChannels: new Map(),
-  localMediaStream: null
+  lastPadNavTs: 0
 };
 
 const RTC_CONFIG = {
@@ -31,8 +42,7 @@ function isClickInsideRect(rect, event) {
 }
 
 function setupDialogLightDismiss() {
-  const dialogs = document.querySelectorAll('dialog.console-dialog');
-  dialogs.forEach((dialog) => {
+  document.querySelectorAll('dialog.console-dialog').forEach((dialog) => {
     if (!('closedBy' in HTMLDialogElement.prototype)) {
       dialog.addEventListener('click', (event) => {
         if (event.target !== dialog) return;
@@ -51,231 +61,279 @@ function setupDialogLightDismiss() {
   });
 }
 
+function updateClock() {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const el = document.getElementById('systemClock');
+  if (el) el.textContent = `${hh}:${mm}`;
+}
+
 function getPlayerName() {
   const input = document.getElementById('playerNameInput');
-  return (input && input.value.trim()) || 'Player1';
+  return (input && input.value.trim()) || 'Player 1';
 }
 
-function formatBytes(bytes) {
-  if (!bytes || bytes < 1024) return `${bytes || 0} B`;
-  const kb = bytes / 1024;
-  if (kb < 1024) return `${kb.toFixed(1)} KB`;
-  return `${(kb / 1024).toFixed(1)} MB`;
-}
+async function fetchDeckLibrary() {
+  const res = await fetch('/api/deck').then((r) => r.json());
+  state.games = res.games || [];
+  state.consoles = res.consoles || [];
+  state.rooms = res.rooms || [];
+  state.gpu = res.gpu || null;
 
-async function fetchInitialData() {
-  const [healthRes, consolesRes, romsRes] = await Promise.all([
-    fetch('/api/health').then((r) => r.json()),
-    fetch('/api/consoles').then((r) => r.json()),
-    fetch('/api/roms').then((r) => r.json())
-  ]);
-
-  if (healthRes.memory) {
-    document.getElementById('vpsRamLabel').textContent =
-      `VPS: ${healthRes.memory.rssMB} MB RAM · P2P`;
-  }
-  state.consoles = consolesRes.consoles || [];
-  state.roms = romsRes.roms || [];
-  updateGpuUi(consolesRes.gpuNode || healthRes.gpuNode);
-  renderConsoleTabs();
   populateUploadConsoleSelect();
-  renderRomsGrid();
-}
-
-function renderConsoleTabs() {
-  const container = document.getElementById('consoleTabs');
-  const tabs = [{ id: 'all', shortName: 'Todos os Sistemas' }, ...state.consoles];
-  container.innerHTML = '';
-  tabs.forEach((c) => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = `tab-btn ${state.selectedConsole === c.id ? 'active' : ''}`;
-    btn.textContent = c.shortName || c.name;
-    btn.addEventListener('click', () => {
-      state.selectedConsole = c.id;
-      renderConsoleTabs();
-      renderRomsGrid();
-    });
-    container.appendChild(btn);
-  });
+  renderCategoryTabs();
+  applyFiltersAndRender();
+  renderRoomsShelf();
 }
 
 function populateUploadConsoleSelect() {
   const select = document.getElementById('uploadConsoleSelect');
+  if (!select) return;
   select.innerHTML = '';
-  state.consoles
-    .filter((c) => c.mode !== 'gpu-node')
-    .forEach((c) => {
-      const opt = document.createElement('option');
-      opt.value = c.id;
-      opt.textContent = `${c.name} (${c.extensions.join(', ')})`;
-      select.appendChild(opt);
-    });
+  state.consoles.forEach((c) => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = c.name;
+    select.appendChild(opt);
+  });
 }
 
-function updateGpuUi(gpu) {
-  if (!gpu) return;
-  state.gpu = gpu;
-  const dot = document.getElementById('gpuDot');
-  const label = document.getElementById('gpuStatusLabel');
-  const banner = document.getElementById('gpuModalBanner');
-  const stateText = document.getElementById('gpuModalStateText');
-  const metricsText = document.getElementById('gpuModalMetricsText');
-  const launchBtn = document.getElementById('launchGpuStreamBtn');
+function renderCategoryTabs() {
+  const nav = document.getElementById('consoleTabs');
+  nav.innerHTML = '';
+  CATEGORIES.forEach((cat) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `tab-btn ${state.selectedCategory === cat.id ? 'active' : ''}`;
+    btn.textContent = cat.label;
+    btn.addEventListener('click', () => selectCategory(cat.id));
+    nav.appendChild(btn);
+  });
+}
 
-  if (gpu.online) {
-    dot.className = 'dot dot-online';
-    label.textContent = `RTX 3050: ONLINE (${gpu.temperatureC || 45}°C · NVENC)`;
-    banner.className = 'gpu-status-banner online';
-    stateText.textContent = `ONLINE · ${gpu.gpuModel}`;
-    metricsText.textContent =
-      `Jogo Ativo: ${gpu.activeGame || 'PS2 PCSX2'} · VRAM: ${gpu.vramUsedMiB}/${gpu.vramTotalMiB} MiB · Encoder: ${gpu.encoder}`;
-    launchBtn.classList.toggle('hidden', !gpu.streamUrl);
-    return;
+function selectCategory(categoryId) {
+  state.selectedCategory = categoryId;
+  state.focusedIndex = 0;
+  renderCategoryTabs();
+  applyFiltersAndRender();
+}
+
+function stepCategory(delta) {
+  const idx = CATEGORIES.findIndex((c) => c.id === state.selectedCategory);
+  const nextIdx = (idx + delta + CATEGORIES.length) % CATEGORIES.length;
+  selectCategory(CATEGORIES[nextIdx].id);
+}
+
+function matchesSelectedCategory(game) {
+  if (state.selectedCategory === 'all') return true;
+  if (state.selectedCategory === 'multiplayer') return game.maxPlayers >= 2;
+  return game.consoleId === state.selectedCategory;
+}
+
+function matchesSearchQuery(game) {
+  if (!state.searchQuery) return true;
+  const q = state.searchQuery.toLowerCase();
+  return game.title.toLowerCase().includes(q) || game.consoleName.toLowerCase().includes(q);
+}
+
+function applyFiltersAndRender() {
+  state.filteredGames = state.games.filter(
+    (g) => matchesSelectedCategory(g) && matchesSearchQuery(g)
+  );
+  if (state.focusedIndex >= state.filteredGames.length) {
+    state.focusedIndex = 0;
   }
-
-  dot.className = 'dot dot-offline';
-  label.textContent = 'RTX 3050: Standby (0W)';
-  banner.className = 'gpu-status-banner';
-  stateText.textContent = 'Status: OFFLINE (Standby · 0W consumidos no seu PC)';
-  metricsText.textContent =
-    'Rode ./bin/supersymmetry-gpu start no seu konsole para ativar sua RTX 3050 e abrir o PS2.';
-  launchBtn.classList.add('hidden');
+  renderCapsulesGrid();
+  updateHeroSpotlight();
 }
 
-function renderRoomsGrid() {
-  const grid = document.getElementById('roomsGrid');
+function renderCapsulesGrid() {
+  const grid = document.getElementById('capsulesGrid');
+  const countEl = document.getElementById('shelfCountLabel');
   grid.innerHTML = '';
+  countEl.textContent = `${state.filteredGames.length} jogos`;
+
+  state.filteredGames.forEach((game, idx) => {
+    const card = document.createElement('div');
+    card.className = `capsule-card ${idx === state.focusedIndex ? 'focused' : ''}`;
+    card.tabIndex = 0;
+    card.setAttribute('role', 'option');
+    card.setAttribute('aria-selected', idx === state.focusedIndex ? 'true' : 'false');
+
+    const imgHtml = game.boxartUrl
+      ? `<img class="capsule-art" src="${escapeHtml(game.boxartUrl)}" alt="${escapeHtml(game.title)}" loading="lazy" onerror="this.style.display='none'" />`
+      : `<div class="capsule-fallback">${escapeHtml(game.title)}</div>`;
+
+    card.innerHTML = `
+      ${imgHtml}
+      <span class="capsule-system-tag">${escapeHtml(game.consoleName)}</span>
+      <span class="capsule-players-tag">${game.maxPlayers}P</span>
+      <div class="capsule-overlay">
+        <div class="capsule-title">${escapeHtml(game.title)}</div>
+        <div class="capsule-play-pill">▶ Jogar</div>
+      </div>
+    `;
+
+    card.addEventListener('mouseenter', () => setFocusedGameIndex(idx, false));
+    card.addEventListener('click', () => {
+      if (state.focusedIndex === idx) {
+        launchGameItem(game);
+      } else {
+        setFocusedGameIndex(idx, false);
+        launchGameItem(game);
+      }
+    });
+    grid.appendChild(card);
+  });
+}
+
+function setFocusedGameIndex(newIndex, scrollIntoView = true) {
+  if (state.filteredGames.length === 0) return;
+  const clamped = Math.max(0, Math.min(state.filteredGames.length - 1, newIndex));
+  state.focusedIndex = clamped;
+
+  const cards = document.querySelectorAll('#capsulesGrid .capsule-card');
+  cards.forEach((card, i) => {
+    card.classList.toggle('focused', i === clamped);
+    card.setAttribute('aria-selected', i === clamped ? 'true' : 'false');
+    if (i === clamped && scrollIntoView) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  });
+  updateHeroSpotlight();
+}
+
+function updateHeroSpotlight() {
+  const game = state.filteredGames[state.focusedIndex];
+  if (!game) return;
+
+  document.getElementById('heroConsoleTag').textContent = game.consoleName;
+  document.getElementById('heroPlayersTag').textContent =
+    game.maxPlayers > 1 ? `ATÉ ${game.maxPlayers} JOGADORES` : '1 JOGADOR';
+  document.getElementById('heroStatusTag').textContent = 'PRONTO PARA JOGAR';
+  document.getElementById('heroTitle').textContent = game.title;
+  document.getElementById('heroSubtitle').textContent = game.genre || game.consoleName;
+
+  const artwork = game.snapUrl || game.boxartUrl || '';
+  const backdrop = document.getElementById('heroBackdrop');
+  const snapImg = document.getElementById('heroSnapImg');
+  if (artwork) {
+    backdrop.style.backgroundImage = `url("${artwork}")`;
+    snapImg.src = artwork;
+  }
+}
+
+async function launchFocusedGame() {
+  const game = state.filteredGames[state.focusedIndex];
+  if (game) {
+    await launchGameItem(game);
+  }
+}
+
+async function launchGameItem(game) {
+  const playBtnText = document.getElementById('heroPlayBtnText');
+  const prevLabel = playBtnText.textContent;
+  playBtnText.textContent = 'CARREGANDO...';
+
+  try {
+    let romId = game.id;
+    let core = game.core;
+    let title = game.title;
+    let consoleId = game.consoleId;
+    let consoleName = game.consoleName;
+
+    if (!romId && game.slug) {
+      const res = await fetch(`/api/catalog/${encodeURIComponent(game.slug)}/ensure`, {
+        method: 'POST'
+      });
+      if (!res.ok) throw new Error('Falha ao preparar o jogo');
+      const data = await res.json();
+      romId = data.rom.id;
+      core = data.rom.core;
+      title = data.rom.title;
+      consoleId = data.rom.consoleId;
+      consoleName = data.rom.consoleName;
+      game.id = romId;
+      game.installed = true;
+    }
+
+    mountEmulatorJs(core, `/api/roms/${romId}/file`, title, romId);
+    sendWs({
+      type: 'create-room',
+      playerName: getPlayerName(),
+      consoleId,
+      consoleName,
+      romId,
+      gameTitle: title,
+      mode: 'wasm-p2p'
+    });
+  } finally {
+    playBtnText.textContent = prevLabel;
+  }
+}
+
+function launchLocalFileAsHost(file) {
+  const ext = `.${file.name.split('.').pop().toLowerCase()}`;
+  const matched = state.consoles.find((c) => c.extensions.includes(ext)) || state.consoles[0];
+  const blobUrl = URL.createObjectURL(file);
+  const title = file.name.replace(/\.[^.]+$/, '');
+
+  const qam = document.getElementById('quickAccessDialog');
+  if (qam.open) qam.close();
+
+  mountEmulatorJs(matched.core, blobUrl, title, null);
+  sendWs({
+    type: 'create-room',
+    playerName: getPlayerName(),
+    consoleId: matched.id,
+    consoleName: matched.shortName,
+    gameTitle: title,
+    mode: 'wasm-p2p'
+  });
+}
+
+function renderRoomsShelf() {
+  const shelf = document.getElementById('liveRoomsShelf');
+  const grid = document.getElementById('roomsGrid');
+  const badge = document.getElementById('roomsCountBadge');
+  const qamList = document.getElementById('qamRoomsList');
+
+  badge.textContent = `Salas (${state.rooms.length})`;
+  grid.innerHTML = '';
+  qamList.innerHTML = '';
 
   if (state.rooms.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'empty-state';
-    empty.innerHTML =
-      'Nenhuma sala multiplayer aberta neste instante. Escolha uma ROM abaixo ou clique em <strong>Criar Sala Rápida</strong> para abrir o Sofá Virtual (Controles 1 a 4).';
-    grid.appendChild(empty);
+    shelf.classList.add('hidden');
+    qamList.textContent = 'Nenhuma sala aberta no momento. Inicie qualquer jogo para criar uma sala.';
     return;
   }
 
+  shelf.classList.remove('hidden');
   state.rooms.forEach((room) => {
     const card = document.createElement('div');
-    card.className = 'card';
-    const playersList = room.players.map((p) => `P${p.slot}: ${p.name}`).join(' · ');
+    card.className = 'room-banner-card';
     card.innerHTML = `
       <div>
-        <div class="card-top">
-          <span class="badge badge-accent">${room.consoleName}</span>
-          <span class="badge badge-slot">${room.players.length}/4 Jogadores</span>
-        </div>
-        <div class="card-title" style="margin-top:0.5rem">${escapeHtml(room.gameTitle)}</div>
-        <div class="card-meta">Sala <strong>#${room.id}</strong> · Host: ${escapeHtml(room.hostName)}</div>
-        <div class="card-meta">${escapeHtml(playersList)}</div>
+        <div class="tag-pill tag-system" style="display:inline-block;margin-bottom:4px">${escapeHtml(room.consoleName)}</div>
+        <div style="font-weight:800;font-size:0.95rem">${escapeHtml(room.gameTitle)}</div>
+        <div style="font-size:0.78rem;color:var(--steam-muted)">Host: ${escapeHtml(room.hostName)} · ${room.players.length}/4 Controles</div>
       </div>
-      <div class="card-actions">
-        <button type="button" class="btn btn-sm btn-primary" data-join-room="${room.id}">
-          🎮 Entrar na Sala (Pegar Controle)
-        </button>
-      </div>
+      <button type="button" class="btn-steam-play" style="padding:0.5rem 1rem;font-size:0.82rem">Entrar</button>
     `;
-    card.querySelector('[data-join-room]').addEventListener('click', () => joinRoomById(room.id));
+    card.addEventListener('click', () => joinRoomById(room.id));
     grid.appendChild(card);
+
+    const qamBtn = document.createElement('button');
+    qamBtn.type = 'button';
+    qamBtn.className = 'qam-action-btn';
+    qamBtn.textContent = `🎮 ${room.gameTitle} (${room.players.length}/4) — Entrar`;
+    qamBtn.addEventListener('click', () => {
+      document.getElementById('quickAccessDialog').close();
+      joinRoomById(room.id);
+    });
+    qamList.appendChild(qamBtn);
   });
-}
-
-function renderRomsGrid() {
-  const grid = document.getElementById('romsGrid');
-  grid.innerHTML = '';
-
-  if (state.selectedConsole === 'ps2') {
-    renderPs2HybridCard(grid);
-    return;
-  }
-
-  const filtered = state.selectedConsole === 'all'
-    ? state.roms
-    : state.roms.filter((r) => r.consoleId === state.selectedConsole);
-
-  if (filtered.length === 0) {
-    renderEmptyLibraryCard(grid);
-    return;
-  }
-
-  filtered.forEach((rom) => {
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.innerHTML = `
-      <div>
-        <div class="card-top">
-          <span class="badge badge-accent">${escapeHtml(rom.consoleName)}</span>
-          <span class="card-meta">${formatBytes(rom.sizeBytes)}</span>
-        </div>
-        <div class="card-title" style="margin-top:0.5rem">${escapeHtml(rom.title)}</div>
-        <div class="card-meta">
-          Core: <code>${escapeHtml(rom.core)}</code> · Até ${rom.maxPlayers} Controles
-          ${rom.hasSave ? ' · 💾 Cloud Save Ativo' : ''}
-        </div>
-      </div>
-      <div class="card-actions">
-        <button type="button" class="btn btn-sm btn-primary" data-play-rom="${rom.id}">
-          ▶ Jogar &amp; Abrir Sala 4P
-        </button>
-        <button type="button" class="btn btn-sm btn-danger" data-delete-rom="${rom.id}" title="Remover ROM">
-          🗑️
-        </button>
-      </div>
-    `;
-    card.querySelector('[data-play-rom]').addEventListener('click', () => launchServerRomAsHost(rom));
-    card.querySelector('[data-delete-rom]').addEventListener('click', () => deleteServerRom(rom.id));
-    grid.appendChild(card);
-  });
-}
-
-function renderPs2HybridCard(grid) {
-  const ps2Def = state.consoles.find((c) => c.id === 'ps2');
-  const online = Boolean(state.gpu && state.gpu.online);
-  const card = document.createElement('div');
-  card.className = 'card';
-  card.style.gridColumn = '1 / -1';
-  card.innerHTML = `
-    <div>
-      <div class="card-top">
-        <span class="badge badge-accent">PS2 · HÍBRIDO RTX 3050</span>
-        <span class="badge badge-slot">${online ? 'ONLINE · NVENC ATIVO' : 'STANDBY · 0W'}</span>
-      </div>
-      <div class="card-title" style="margin-top:0.6rem">PlayStation 2 (PCSX2 Vulkan + NVIDIA RTX 3050 6GB)</div>
-      <div class="card-meta" style="margin-top:0.4rem">${escapeHtml(ps2Def ? ps2Def.description : '')}</div>
-      <div class="card-meta" style="margin-top:0.4rem">
-        Jogos ideais: <strong>${(ps2Def ? ps2Def.featuredExamples : []).join(' · ')}</strong>
-      </div>
-    </div>
-    <div class="card-actions">
-      <button type="button" class="btn btn-primary" id="ps2CardModalBtn">
-        ⚡ ${online ? 'Conectar ao Stream da RTX 3050' : 'Ver Comando do Konsole para Ligar RTX 3050'}
-      </button>
-    </div>
-  `;
-  card.querySelector('#ps2CardModalBtn').addEventListener('click', () => {
-    if (online && state.gpu.streamUrl) {
-      launchGpuStreamInStage();
-      return;
-    }
-    document.getElementById('gpuNodeDialog').showModal();
-  });
-  grid.appendChild(card);
-}
-
-function renderEmptyLibraryCard(grid) {
-  const activeConsole = state.consoles.find((c) => c.id === state.selectedConsole);
-  const examples = activeConsole
-    ? activeConsole.featuredExamples.join(' · ')
-    : 'Super Bomberman 4 (SNES) · Bomba Patch (PS1/PSP/PS2) · Pokémon Emerald (GBA) · Mario Kart 64';
-  const empty = document.createElement('div');
-  empty.className = 'empty-state';
-  empty.innerHTML = `
-    <p><strong>Nenhuma ROM cadastrada neste filtro ainda.</strong></p>
-    <p style="margin-top:0.35rem">Sugestões clássicas para jogar com os amigos: <em>${escapeHtml(examples)}</em></p>
-    <p style="margin-top:0.5rem">Clique em <strong>＋ Subir ROM para a VPS</strong> para deixar o jogo salvo permanentemente para a galera, ou em <strong>📂 Rodar ROM do PC</strong> para abrir na hora.</p>
-  `;
-  grid.appendChild(empty);
 }
 
 function connectWebSocket() {
@@ -296,30 +354,29 @@ const WS_HANDLERS = {
   welcome: (msg) => {
     state.peerId = msg.peerId;
     state.rooms = msg.rooms || [];
-    renderRoomsGrid();
+    renderRoomsShelf();
   },
   'rooms-updated': (msg) => {
     state.rooms = msg.rooms || [];
-    renderRoomsGrid();
+    renderRoomsShelf();
   },
-  'gpu-updated': (msg) => updateGpuUi(msg.gpu),
+  'gpu-updated': (msg) => {
+    state.gpu = msg.gpu;
+  },
   'room-joined': (msg) => onRoomJoined(msg),
   'peer-joined': (msg) => {
     state.activeRoom = msg.room;
     renderControllerSlots();
-    appendChatLine('Sistema', `${msg.name} entrou no Controle ${msg.slot || 'Espectador'}.`);
+    appendChatLine('Console', `${msg.name} assumiu o Controle ${msg.slot || 'Espectador'}.`);
     if (state.isHost) startHostPeerConnection(msg.peerId);
   },
   'peer-left': (msg) => {
     state.activeRoom = msg.room;
     closePeerConnection(msg.peerId);
     renderControllerSlots();
-    appendChatLine('Sistema', `${msg.name} saiu da sala.`);
+    appendChatLine('Console', `${msg.name} desconectou.`);
   },
-  'room-closed': (msg) => {
-    appendChatLine('Sistema', msg.reason || 'Sala encerrada.');
-    closeConsoleStage();
-  },
+  'room-closed': () => closeConsoleStage(),
   'webrtc-signal': (msg) => handleWebRtcSignal(msg),
   'pad-input': (msg) => forwardRemotePadToEmulator(msg),
   'chat-msg': (msg) => appendChatLine(`P${msg.slot || '?'} ${msg.fromName}`, msg.text)
@@ -336,15 +393,12 @@ function onRoomJoined(msg) {
   state.isHost = msg.isHost;
 
   document.getElementById('consoleStage').classList.remove('hidden');
-  document.getElementById('activeRoomCode').textContent = `#${msg.room.id}`;
+  document.getElementById('activeRoomCode').textContent = `Sala #${msg.room.id}`;
   document.getElementById('stageConsoleBadge').textContent = msg.room.consoleName;
   document.getElementById('stageGameTitle').textContent = msg.room.gameTitle;
-  document.getElementById('stageRoleBadge').textContent =
-    msg.isHost ? 'Controle 1 (Host)' : `Controle ${msg.slot} (P2P)`;
+  document.getElementById('stageRoleBadge').textContent = `Controle ${msg.slot}`;
 
   renderControllerSlots();
-  appendChatLine('Sistema', `Conectado na sala #${msg.room.id} como Controle ${msg.slot}.`);
-
   if (!msg.isHost) {
     setupGuestStreamView();
   }
@@ -360,8 +414,8 @@ function renderControllerSlots() {
     const li = document.createElement('li');
     li.className = `slot-item ${occupant ? 'occupied' : ''}`;
     li.innerHTML = `
-      <span>🎮 Controle ${slot}</span>
-      <strong>${occupant ? escapeHtml(occupant.name) : 'Livre (Aguardando amigo)'}</strong>
+      <span>Controle ${slot}</span>
+      <strong>${occupant ? escapeHtml(occupant.name) : 'Livre'}</strong>
     `;
     list.appendChild(li);
   }
@@ -370,42 +424,9 @@ function renderControllerSlots() {
 function appendChatLine(author, text) {
   const box = document.getElementById('roomChatMessages');
   const div = document.createElement('div');
-  div.className = 'chat-line';
   div.innerHTML = `<strong>${escapeHtml(author)}:</strong> ${escapeHtml(text)}`;
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
-}
-
-function launchServerRomAsHost(rom) {
-  state.activeRom = rom;
-  mountEmulatorJs(rom.core, `/api/roms/${rom.id}/file`, rom.title, rom.id);
-  sendWs({
-    type: 'create-room',
-    playerName: getPlayerName(),
-    consoleId: rom.consoleId,
-    consoleName: rom.consoleName,
-    romId: rom.id,
-    gameTitle: rom.title,
-    mode: 'wasm-p2p'
-  });
-}
-
-function launchLocalFileAsHost(file) {
-  const ext = `.${file.name.split('.').pop().toLowerCase()}`;
-  const matched = state.consoles.find((c) => c.extensions.includes(ext)) || state.consoles[0];
-  const blobUrl = URL.createObjectURL(file);
-  const title = file.name.replace(/\.[^.]+$/, '');
-  state.activeRom = { id: null, title, core: matched.core, consoleId: matched.id, consoleName: matched.shortName };
-
-  mountEmulatorJs(matched.core, blobUrl, title, null);
-  sendWs({
-    type: 'create-room',
-    playerName: getPlayerName(),
-    consoleId: matched.id,
-    consoleName: matched.shortName,
-    gameTitle: title,
-    mode: 'wasm-p2p'
-  });
 }
 
 function mountEmulatorJs(core, romUrl, title, romId) {
@@ -439,7 +460,7 @@ function mountEmulatorJs(core, romUrl, title, romId) {
     window.EJS_gameName = ${JSON.stringify(title)};
     window.EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
     window.EJS_startOnLoaded = true;
-    window.EJS_color = '#8b5cf6';
+    window.EJS_color = '#1a9fff';
     ${saveUrl ? `window.EJS_loadStateURL = ${JSON.stringify(saveUrl)};` : ''}
   </script>
   <script src="https://cdn.emulatorjs.org/stable/data/loader.js"></script>
@@ -600,33 +621,9 @@ function closeConsoleStage() {
     closePeerConnection(peerId);
   }
   state.activeRoom = null;
-  state.activeRom = null;
   document.getElementById('emulatorMount').innerHTML = '';
   document.getElementById('remoteStreamVideo').srcObject = null;
   document.getElementById('consoleStage').classList.add('hidden');
-}
-
-function launchGpuStreamInStage() {
-  const gpuDialog = document.getElementById('gpuNodeDialog');
-  if (gpuDialog.open) gpuDialog.close();
-
-  const streamUrl = state.gpu && state.gpu.streamUrl;
-  if (!streamUrl) return;
-
-  sendWs({
-    type: 'create-room',
-    playerName: getPlayerName(),
-    consoleId: 'ps2',
-    consoleName: 'PS2 · RTX 3050',
-    gameTitle: state.gpu.activeGame || 'PlayStation 2 (RTX 3050 Live)',
-    mode: 'gpu-node',
-    streamUrl
-  });
-
-  const mount = document.getElementById('emulatorMount');
-  document.getElementById('remoteStreamVideo').classList.add('hidden');
-  mount.classList.remove('hidden');
-  mount.innerHTML = `<iframe src="${escapeHtml(streamUrl)}" allow="autoplay; fullscreen; gamepad; microphone"></iframe>`;
 }
 
 function sendRomWithProgress(file, consoleId, title, onProgress) {
@@ -638,7 +635,7 @@ function sendRomWithProgress(file, consoleId, title, onProgress) {
     if (title) xhr.setRequestHeader('x-rom-title', encodeURIComponent(title));
     xhr.upload.onprogress = onProgress;
     xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(xhr.responseText)));
-    xhr.onerror = () => reject(new Error('Falha de rede no upload'));
+    xhr.onerror = () => reject(new Error('Falha no envio'));
     xhr.send(file);
   });
 }
@@ -663,26 +660,16 @@ async function handleRomUploadSubmit(ev) {
       if (!e.lengthComputable) return;
       const pct = Math.round((e.loaded / e.total) * 100);
       progressFill.style.width = `${pct}%`;
-      progressText.textContent = `Enviando ${pct}% (${formatBytes(e.loaded)} / ${formatBytes(e.total)})`;
+      progressText.textContent = `Adicionando (${pct}%)`;
     });
 
-    const romsRes = await fetch('/api/roms').then((r) => r.json());
-    state.roms = romsRes.roms || [];
-    renderRomsGrid();
+    await fetchDeckLibrary();
     document.getElementById('uploadRomForm').reset();
     document.getElementById('uploadRomDialog').close();
-  } catch (err) {
-    progressText.textContent = `Erro: ${err.message}`;
   } finally {
     submitBtn.disabled = false;
-    setTimeout(() => progressBox.classList.add('hidden'), 1200);
+    setTimeout(() => progressBox.classList.add('hidden'), 800);
   }
-}
-
-async function deleteServerRom(romId) {
-  await fetch(`/api/roms/${romId}`, { method: 'DELETE' });
-  state.roms = state.roms.filter((r) => r.id !== romId);
-  renderRomsGrid();
 }
 
 function getConnectedGamepads() {
@@ -707,16 +694,66 @@ function transmitGuestGamepad(pad) {
   sendWs(frame);
 }
 
+function isPadButtonPressed(pad, index) {
+  return Boolean(pad.buttons[index] && pad.buttons[index].pressed);
+}
+
+const PAD_BUTTON_BINDINGS = [
+  { btn: 15, run: () => setFocusedGameIndex(state.focusedIndex + 1) },
+  { btn: 14, run: () => setFocusedGameIndex(state.focusedIndex - 1) },
+  { btn: 5, run: () => stepCategory(1) },
+  { btn: 4, run: () => stepCategory(-1) },
+  { btn: 0, run: () => launchFocusedGame() }
+];
+
+function resolvePadNavigationCommand(pad) {
+  const matched = PAD_BUTTON_BINDINGS.find((b) => isPadButtonPressed(pad, b.btn));
+  if (matched) return matched.run;
+  const axisX = pad.axes[0] || 0;
+  if (Math.abs(axisX) > 0.55) {
+    return () => setFocusedGameIndex(state.focusedIndex + Math.sign(axisX));
+  }
+  return null;
+}
+
+function handleDeckGamepadNavigation(pad) {
+  if (state.activeRoom) return;
+  const now = performance.now();
+  if (now - state.lastPadNavTs < 200) return;
+
+  const command = resolvePadNavigationCommand(pad);
+  if (command) {
+    state.lastPadNavTs = now;
+    command();
+  }
+}
+
 function pollGamepadsLoop() {
   const pads = getConnectedGamepads();
   const label = document.getElementById('gamepadCountLabel');
-  if (label) {
-    label.textContent = `${pads.length} Controle${pads.length === 1 ? '' : 's'} USB/BT`;
-  }
+  if (label) label.textContent = String(pads.length);
+
   if (pads.length > 0) {
     transmitGuestGamepad(pads[0]);
+    handleDeckGamepadNavigation(pads[0]);
   }
   requestAnimationFrame(pollGamepadsLoop);
+}
+
+function handleKeyboardDeckNavigation(ev) {
+  if (state.activeRoom) return;
+  if (ev.target.tagName === 'INPUT' || ev.target.tagName === 'SELECT') return;
+
+  if (ev.key === 'ArrowRight') {
+    ev.preventDefault();
+    setFocusedGameIndex(state.focusedIndex + 1);
+  } else if (ev.key === 'ArrowLeft') {
+    ev.preventDefault();
+    setFocusedGameIndex(state.focusedIndex - 1);
+  } else if (ev.key === 'Enter') {
+    ev.preventDefault();
+    launchFocusedGame();
+  }
 }
 
 function escapeHtml(str) {
@@ -729,37 +766,44 @@ function escapeHtml(str) {
 
 function bindUiEvents() {
   setupDialogLightDismiss();
+  updateClock();
+  setInterval(updateClock, 15000);
 
-  const openUpload = () => document.getElementById('uploadRomDialog').showModal();
+  const openQam = () => document.getElementById('quickAccessDialog').showModal();
+  document.getElementById('openQuickMenuBtn').addEventListener('click', openQam);
+  document.getElementById('openRoomsDrawerBtn').addEventListener('click', openQam);
+  document.getElementById('bottomMenuBtn').addEventListener('click', openQam);
+  document.getElementById('heroPartyBtn').addEventListener('click', launchFocusedGame);
+  document.getElementById('bottomPartyBtn').addEventListener('click', openQam);
+
+  const openUpload = () => {
+    const qam = document.getElementById('quickAccessDialog');
+    if (qam.open) qam.close();
+    document.getElementById('uploadRomDialog').showModal();
+  };
   document.getElementById('openUploadModalBtn').addEventListener('click', openUpload);
-  document.getElementById('openUploadModalBtn2').addEventListener('click', openUpload);
+  document.getElementById('bottomImportBtn').addEventListener('click', openUpload);
 
-  const openGpu = () => document.getElementById('gpuNodeDialog').showModal();
-  document.getElementById('gpuStatusBtn').addEventListener('click', openGpu);
-  document.getElementById('openGpuModalBtn').addEventListener('click', openGpu);
+  document.getElementById('heroPlayBtn').addEventListener('click', launchFocusedGame);
+  document.getElementById('bottomPlayBtn').addEventListener('click', launchFocusedGame);
 
-  document.getElementById('copyKonsoleCmdBtn').addEventListener('click', () => {
-    navigator.clipboard.writeText('./bin/supersymmetry-gpu start');
-    document.getElementById('copyKonsoleCmdBtn').textContent = 'Copiado!';
+  document.getElementById('searchInput').addEventListener('input', (ev) => {
+    state.searchQuery = ev.target.value.trim();
+    state.focusedIndex = 0;
+    applyFiltersAndRender();
   });
 
-  document.getElementById('launchGpuStreamBtn').addEventListener('click', launchGpuStreamInStage);
   document.getElementById('uploadRomForm').addEventListener('submit', handleRomUploadSubmit);
-
   document.getElementById('instantLocalRomInput').addEventListener('change', (ev) => {
     const file = ev.target.files[0];
     if (file) launchLocalFileAsHost(file);
   });
 
-  document.getElementById('createQuickRoomBtn').addEventListener('click', () => {
-    if (state.roms.length > 0) {
-      launchServerRomAsHost(state.roms[0]);
-    } else {
-      document.getElementById('instantLocalRomInput').click();
-    }
-  });
-
   document.getElementById('closeStageBtn').addEventListener('click', closeConsoleStage);
+  document.getElementById('toggleSidebarBtn').addEventListener('click', () => {
+    document.getElementById('ingameSidebar').classList.toggle('hidden');
+    document.querySelector('.ingame-body').classList.toggle('sidebar-collapsed');
+  });
   document.getElementById('fullscreenStageBtn').addEventListener('click', () => {
     const wrapper = document.getElementById('viewportWrapper');
     if (wrapper.requestFullscreen) wrapper.requestFullscreen();
@@ -772,11 +816,13 @@ function bindUiEvents() {
     sendWs({ type: 'chat-msg', text: input.value.trim() });
     input.value = '';
   });
+
+  window.addEventListener('keydown', handleKeyboardDeckNavigation);
 }
 
 window.addEventListener('DOMContentLoaded', () => {
   bindUiEvents();
-  fetchInitialData();
+  fetchDeckLibrary();
   connectWebSocket();
   requestAnimationFrame(pollGamepadsLoop);
 });

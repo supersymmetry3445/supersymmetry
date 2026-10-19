@@ -30,7 +30,7 @@ function sendJsonResponse(res, statusCode, payload) {
   res.end(body);
 }
 
-function readRequestBuffer(req, maxBytes = 1024 * 1024 * 16) {
+function readRequestBuffer(req, maxBytes = 1024 * 1024 * 64) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let total = 0;
@@ -78,6 +78,13 @@ function createApiRouter({ storage, rooms, gpuBridge }) {
   const exactRoutes = {
     'GET /api/health': (_req, res) =>
       sendJsonResponse(res, 200, buildHealthPayload(storage, rooms, gpuBridge)),
+    'GET /api/deck': (_req, res) =>
+      sendJsonResponse(res, 200, {
+        games: storage.listUnifiedDeckLibrary(),
+        consoles: CONSOLES,
+        rooms: rooms.listPublicRooms(),
+        gpu: gpuBridge.getStatus()
+      }),
     'GET /api/consoles': (_req, res) =>
       sendJsonResponse(res, 200, { consoles: CONSOLES, gpuNode: gpuBridge.getStatus() }),
     'GET /api/roms': (_req, res, parsedUrl) =>
@@ -96,6 +103,12 @@ function createApiRouter({ storage, rooms, gpuBridge }) {
     const exactHandler = exactRoutes[routeKey];
     if (exactHandler) {
       return exactHandler(req, res, parsedUrl);
+    }
+
+    const catalogMatch = parsedUrl.pathname.match(/^\/api\/catalog\/([a-z0-9-]+)\/ensure$/i);
+    if (catalogMatch && method === 'POST') {
+      const rom = await storage.ensureVerifiedGame(catalogMatch[1]);
+      return sendJsonResponse(res, 200, { rom });
     }
 
     const romMatch = parsedUrl.pathname.match(/^\/api\/roms\/([a-f0-9-]+)(?:\/(file|save))?$/i);
@@ -252,7 +265,7 @@ async function startServer() {
   const app = createSupersymmetryApp();
   await app.storage.init();
   app.server.listen(port, '0.0.0.0', () => {
-    console.log(`[Supersymmetry] Hybrid Web Console running on http://0.0.0.0:${port}`);
+    console.log(`[Supersymmetry] SteamOS Console running on http://0.0.0.0:${port}`);
   });
 }
 

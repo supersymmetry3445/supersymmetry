@@ -4,7 +4,9 @@ const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { Readable } = require('node:stream');
 const { detectConsoleByFilename } = require('./consoles');
+const { VERIFIED_CATALOG, getVerifiedBySlug } = require('./verified-catalog');
 
 function sanitizeFilename(rawName) {
   const base = path.basename(String(rawName || 'game.rom'));
@@ -14,7 +16,7 @@ function sanitizeFilename(rawName) {
 function deriveTitleFromFilename(filename) {
   const ext = path.extname(filename);
   const raw = path.basename(filename, ext);
-  return raw.replace(/[_-]+/g, ' ').trim() || 'Unknown ROM';
+  return raw.replace(/[_-]+/g, ' ').trim() || 'Unknown Game';
 }
 
 function parseByteRange(rangeHeader, totalSize) {
@@ -30,6 +32,61 @@ function parseByteRange(rangeHeader, totalSize) {
   return { start, end, chunkSize: end - start + 1 };
 }
 
+function mapVerifiedItemWithInstallState(item, installed) {
+  if (!installed) {
+    return { ...item, id: null, installed: false, hasSave: false, sizeBytes: 0 };
+  }
+  return {
+    ...item,
+    id: installed.id,
+    installed: true,
+    hasSave: Boolean(installed.hasSave),
+    sizeBytes: installed.sizeBytes
+  };
+}
+
+function mapCustomRomToDeckItem(rom) {
+  return {
+    slug: `custom-${rom.id}`,
+    id: rom.id,
+    title: rom.title,
+    consoleId: rom.consoleId,
+    consoleName: rom.consoleName,
+    core: rom.core,
+    maxPlayers: rom.maxPlayers || 4,
+    category: 'custom',
+    genre: rom.consoleName,
+    boxartUrl: rom.boxartUrl || null,
+    snapUrl: rom.snapUrl || null,
+    installed: true,
+    hasSave: Boolean(rom.hasSave),
+    sizeBytes: rom.sizeBytes
+  };
+}
+
+function createCatalogRomEntry({ romId, safeFilename, consoleDef, metadata, sizeBytes, sha1 }) {
+  const rawTitle = metadata.title ? String(metadata.title).trim() : '';
+  return {
+    id: romId,
+    slug: metadata.slug || null,
+    title: rawTitle || deriveTitleFromFilename(safeFilename),
+    filename: safeFilename,
+    storedFileName: `${romId}_${safeFilename}`,
+    consoleId: consoleDef.id,
+    consoleName: consoleDef.shortName,
+    core: consoleDef.core,
+    mode: consoleDef.mode,
+    maxPlayers: consoleDef.maxPlayers,
+    genre: metadata.genre || consoleDef.shortName,
+    boxartUrl: metadata.boxartUrl || null,
+    snapUrl: metadata.snapUrl || null,
+    sizeBytes,
+    sha1,
+    hasSave: false,
+    uploadedAt: new Date().toISOString()
+  };
+}
+
 class StorageManager {
   constructor(dataDir) {
     this.dataDir = dataDir;
@@ -39,6 +96,7 @@ class StorageManager {
     this.biosDir = path.join(dataDir, 'bios');
     this.catalogPath = path.join(dataDir, 'catalog.json');
     this.roms = [];
+    this.inflightDownloads = new Map();
   }
 
   async init() {
@@ -76,16 +134,70 @@ class StorageManager {
     return this.roms.filter((rom) => rom.consoleId === consoleFilter);
   }
 
+  listUnifiedDeckLibrary() {
+    const installedBySlug = new Map();
+    for (const rom of this.roms) {
+      if (rom.slug) installedBySlug.set(rom.slug, rom);
+    }
+    const deckItems = VERIFIED_CATALOG.map((item) =>
+      mapVerifiedItemWithInstallState(item, installedBySlug.get(item.slug))
+    );
+    const customRoms = this.roms.filter((rom) => !rom.slug).map(mapCustomRomToDeckItem);
+    return [...customRoms, ...deckItems];
+  }
+
   getRomById(romId) {
     return this.roms.find((rom) => rom.id === romId) || null;
+  }
+
+  async ensureVerifiedGame(slug) {
+    const verified = getVerifiedBySlug(slug);
+    if (!verified) {
+      throw new Error(`Game '${slug}' not found in verified catalog`);
+    }
+
+    const existing = this.roms.find((r) => r.slug === slug);
+    if (existing && fs.existsSync(path.join(this.romsDir, existing.storedFileName))) {
+      return existing;
+    }
+
+    if (this.inflightDownloads.has(slug)) {
+      return this.inflightDownloads.get(slug);
+    }
+
+    const downloadPromise = this.downloadVerifiedArchive(verified).finally(() => {
+      this.inflightDownloads.delete(slug);
+    });
+    this.inflightDownloads.set(slug, downloadPromise);
+    return downloadPromise;
+  }
+
+  async downloadVerifiedArchive(verified) {
+    const response = await fetch(verified.archiveUrl, {
+      redirect: 'follow',
+      headers: { 'User-Agent': 'Supersymmetry-Console/1.0 (No-Intro Preservation)' }
+    });
+    if (!response.ok || !response.body) {
+      throw new Error(`Failed to fetch verified ROM (${response.status})`);
+    }
+
+    const nodeStream = Readable.fromWeb(response.body);
+    return this.saveUploadedRom(nodeStream, {
+      filename: verified.filename,
+      title: verified.title,
+      consoleId: verified.consoleId,
+      slug: verified.slug,
+      boxartUrl: verified.boxartUrl,
+      snapUrl: verified.snapUrl,
+      genre: verified.genre
+    });
   }
 
   async saveUploadedRom(stream, metadata) {
     const safeFilename = sanitizeFilename(metadata.filename);
     const consoleDef = detectConsoleByFilename(safeFilename, metadata.consoleId);
     const romId = crypto.randomUUID();
-    const storedFileName = `${romId}_${safeFilename}`;
-    const targetPath = path.join(this.romsDir, storedFileName);
+    const targetPath = path.join(this.romsDir, `${romId}_${safeFilename}`);
 
     const { sizeBytes, sha1 } = await this.writeStreamWithHash(stream, targetPath);
     if (sizeBytes === 0) {
@@ -99,22 +211,7 @@ class StorageManager {
       return existing;
     }
 
-    const entry = {
-      id: romId,
-      title: metadata.title ? String(metadata.title).trim() : deriveTitleFromFilename(safeFilename),
-      filename: safeFilename,
-      storedFileName,
-      consoleId: consoleDef.id,
-      consoleName: consoleDef.shortName,
-      core: consoleDef.core,
-      mode: consoleDef.mode,
-      maxPlayers: consoleDef.maxPlayers,
-      sizeBytes,
-      sha1,
-      hasSave: false,
-      uploadedAt: new Date().toISOString()
-    };
-
+    const entry = createCatalogRomEntry({ romId, safeFilename, consoleDef, metadata, sizeBytes, sha1 });
     this.roms.unshift(entry);
     await this.saveCatalog();
     return entry;

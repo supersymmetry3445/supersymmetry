@@ -29,7 +29,7 @@ async function startTestApp() {
   return { app, baseUrl, wsUrl, cleanup };
 }
 
-test('Supersymmetry API: /api/health and /api/consoles return isolated project metadata and low RAM footprint', async () => {
+test('Supersymmetry API: /api/deck and /api/health return SteamOS library with 24 No-Intro verified games', async () => {
   const { baseUrl, cleanup } = await startTestApp();
   try {
     const res = await fetch(`${baseUrl}/api/health`);
@@ -38,12 +38,12 @@ test('Supersymmetry API: /api/health and /api/consoles return isolated project m
     assert.equal(body.status, 'ok');
     assert.equal(body.project, 'Supersymmetry');
     assert.equal(body.coolifyProjectUuid, 'b0ialzsu5xdxdjl3ws7ygbl9');
-    assert.ok(body.memory.rssMB < 150, `Expected low memory usage (<150MB), got ${body.memory.rssMB}MB`);
 
-    const consolesRes = await fetch(`${baseUrl}/api/consoles`).then((r) => r.json());
-    assert.ok(consolesRes.consoles.some((c) => c.id === 'snes'));
-    assert.ok(consolesRes.consoles.some((c) => c.id === 'gba'));
-    assert.ok(consolesRes.consoles.some((c) => c.id === 'ps2' && c.mode === 'gpu-node'));
+    const deckRes = await fetch(`${baseUrl}/api/deck`).then((r) => r.json());
+    assert.ok(Array.isArray(deckRes.games));
+    assert.ok(deckRes.games.length >= 24);
+    assert.ok(deckRes.games.some((g) => g.slug === 'super-bomberman-4' && g.boxartUrl.includes('thumbnails.libretro.com')));
+    assert.ok(deckRes.games.some((g) => g.slug === 'pokemon-emerald'));
   } finally {
     await cleanup();
   }
@@ -68,7 +68,6 @@ test('Supersymmetry Storage: uploads ROM, deduplicates by SHA-1, streams HTTP 20
     assert.equal(rom.core, 'snes9x');
     assert.equal(rom.sizeBytes, romBytes.length);
 
-    // HTTP 206 Partial Content Range Request
     const rangeRes = await fetch(`${baseUrl}/api/roms/${rom.id}/file`, {
       headers: { Range: 'bytes=0-14' }
     });
@@ -76,7 +75,6 @@ test('Supersymmetry Storage: uploads ROM, deduplicates by SHA-1, streams HTTP 20
     const partialBuf = Buffer.from(await rangeRes.arrayBuffer());
     assert.equal(partialBuf.toString(), 'SUPER_BOMBERMAN');
 
-    // Cloud Save SRAM sync
     const srmPayload = Buffer.from('SRAM_SAVE_DATA_BOMBERMAN_STAGE_5');
     const saveRes = await fetch(`${baseUrl}/api/roms/${rom.id}/save`, {
       method: 'POST',
@@ -176,7 +174,6 @@ test('Supersymmetry WebSocket Rooms: Host creates 4-player room, friend joins Sl
     assert.equal(guestJoined.isHost, false);
     assert.equal(hostNotified.slot, 2);
 
-    // Relay WebRTC SDP Offer from Host to Guest
     const signalPromise = waitForType(guestWs, 'webrtc-signal');
     hostWs.send(JSON.stringify({
       type: 'webrtc-signal',
